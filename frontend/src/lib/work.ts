@@ -18,6 +18,7 @@ export function useWork() {
   const cook = has("kitchen", "head_chef", "manager")
 
   const notes = useQuery({ queryKey: ["notifications"], queryFn: () => api.get<OrderItem[]>("/server/notifications"), enabled: server, refetchInterval: 20_000 })
+  const ready = useQuery({ queryKey: ["ready"], queryFn: () => api.get<OrderItem[]>("/server/ready"), enabled: server, refetchInterval: 20_000 })
   const kitchen = useQuery({ queryKey: ["kitchen"], queryFn: () => api.get<OrderItem[]>("/kitchen/items"), enabled: cook, refetchInterval: 30_000 })
   const handovers = useQuery({ queryKey: ["handovers", "pending"], queryFn: () => api.get<Handover[]>("/handovers?status=pending"), enabled: chef || store })
   const waste = useQuery({ queryKey: ["waste", "pending"], queryFn: () => api.get<WasteSlip[]>("/waste?status=pending"), enabled: chef })
@@ -31,6 +32,9 @@ export function useWork() {
 
   return {
     outOfStockTables: notes.data?.length ?? 0,
+    readyToServe: ready.data?.length ?? 0,
+    /** Việc ở tab "Bàn & báo khách": món hết nguyên liệu cần báo khách + món đã xong chờ bưng. */
+    tablesToAttend: (notes.data?.length ?? 0) + (ready.data?.length ?? 0),
     waitingDishes: (kitchen.data ?? []).filter((i) => i.status === "waiting").length,
     handoversToSign: handovers.data?.length ?? 0,
     wasteToApprove: wasteToApprove.length,

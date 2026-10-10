@@ -142,6 +142,8 @@ export interface OrderItem {
   end_reason: string | null
   remake_of_id: number | null
   confirmed_at: string | null
+  /** Phục vụ đã mang món ra bàn (chỉ có ở món đã hoàn tất). */
+  served_at: string | null
 }
 
 export interface Order {

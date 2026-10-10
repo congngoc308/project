@@ -12,6 +12,9 @@ interface AuthState {
   has: (...roles: Role[]) => boolean
 }
 
+/** PIN cố định 5 số (khớp security.PIN_LEN): đủ 5 số là tự gửi, không cần phím "Vào". */
+export const PIN_LEN = 5
+
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {

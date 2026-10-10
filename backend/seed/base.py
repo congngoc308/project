@@ -14,19 +14,22 @@ from app.auth.security import hash_secret
 from app.models import Ingredient, MenuItem, ShiftTemplate, UnitConversion, User
 from app.services import catalog
 
+# Mọi tài khoản demo dùng chung một PIN cho dễ thử (đổi trước khi dùng thật).
+DEMO_PIN = "00000"
+
 USERS = [
     # username, họ tên, vai trò, PIN, mật khẩu
-    ("quanly", "Lê Minh Quân", [d.MANAGER], "9999", "quanly123"),
-    ("thukho1", "Phạm Thị Thu", [d.STOREKEEPER], "1111", None),
-    ("thukho2", "Đỗ Văn Khải", [d.STOREKEEPER], "1112", None),
-    ("beptruong1", "Nguyễn Văn Bình", [d.HEAD_CHEF, d.KITCHEN], "2221", None),
-    ("beptruong2", "Trần Đức Hùng", [d.HEAD_CHEF, d.KITCHEN], "2222", None),
-    ("bep1", "Hoàng Văn Nam", [d.KITCHEN], "3331", None),
-    ("bep2", "Vũ Thị Lan", [d.KITCHEN], "3332", None),
-    ("bep3", "Bùi Quốc Tuấn", [d.KITCHEN], "3333", None),
-    ("phucvu1", "Đặng Thu Trang", [d.SERVER], "4441", None),
-    ("phucvu2", "Ngô Minh Khoa", [d.SERVER], "4442", None),
-    ("kiemnhiem", "Lý Văn Sơn", [d.STOREKEEPER, d.KITCHEN], "5551", None),
+    ("quanly", "Lê Minh Quân", [d.MANAGER], DEMO_PIN, "quanly123"),
+    ("thukho1", "Phạm Thị Thu", [d.STOREKEEPER], DEMO_PIN, None),
+    ("thukho2", "Đỗ Văn Khải", [d.STOREKEEPER], DEMO_PIN, None),
+    ("beptruong1", "Nguyễn Văn Bình", [d.HEAD_CHEF, d.KITCHEN], DEMO_PIN, None),
+    ("beptruong2", "Trần Đức Hùng", [d.HEAD_CHEF, d.KITCHEN], DEMO_PIN, None),
+    ("bep1", "Hoàng Văn Nam", [d.KITCHEN], DEMO_PIN, None),
+    ("bep2", "Vũ Thị Lan", [d.KITCHEN], DEMO_PIN, None),
+    ("bep3", "Bùi Quốc Tuấn", [d.KITCHEN], DEMO_PIN, None),
+    ("phucvu1", "Đặng Thu Trang", [d.SERVER], DEMO_PIN, None),
+    ("phucvu2", "Ngô Minh Khoa", [d.SERVER], DEMO_PIN, None),
+    ("kiemnhiem", "Lý Văn Sơn", [d.STOREKEEPER], DEMO_PIN, None),
 ]
 
 # mã, tên, nhóm hàng, nhóm kiểm soát, đơn vị cơ sở, đơn vị mua, hệ số, đơn giá (đ/đơn vị cơ sở), hạn mức hao hụt, tồn tối thiểu

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar } from "@/layouts/TopBits"
 import { api } from "@/lib/api"
+import { PIN_LEN } from "@/lib/auth"
 import type { Role, StaffUser } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -76,15 +77,15 @@ export function PinDialog({
           </div>
         </div>
         <div role="status" className="flex justify-center gap-3 py-1" aria-live="polite" aria-label={`Đã nhập ${pin.length} số PIN`}>
-          {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (
+          {Array.from({ length: PIN_LEN }).map((_, i) => (
             <span key={i} className={cn("size-3.5 rounded-full border-2", i < pin.length ? "border-ink bg-ink" : "border-input")} />
           ))}
         </div>
         {error && <p className="text-center text-sm font-medium text-critical-ink" role="alert">{error}</p>}
-        <NumPad value={pin} onChange={setPin} allowDecimal={false} maxLength={6} />
+        <NumPad value={pin} onChange={(v) => { setPin(v); if (v.length === PIN_LEN && userId && !busy) onConfirm(userId, v) }} allowDecimal={false} maxLength={PIN_LEN} />
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" size="xl" onClick={() => onOpenChange(false)}>Quay lại</Button>
-          <Button size="xl" disabled={!userId || pin.length < 4 || busy} onClick={() => userId && onConfirm(userId, pin)}>
+          <Button size="xl" disabled={!userId || pin.length !== PIN_LEN || busy} onClick={() => userId && onConfirm(userId, pin)}>
             {busy ? "Đang xác nhận…" : "Xác nhận"}
           </Button>
         </DialogFooter>

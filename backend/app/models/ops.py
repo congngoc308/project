@@ -67,5 +67,7 @@ class OrderItem(IdMixin, Base):
     confirmed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # bếp trưởng xác nhận
     end_reason: Mapped[str | None] = mapped_column(Text)
     remake_of_id: Mapped[int | None] = mapped_column(ForeignKey("order_items.id"))
+    served_at: Mapped[datetime | None]  # phục vụ xác nhận đã mang món ra bàn (không tác động kho)
+    served_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
     order: Mapped[Order] = relationship(back_populates="items")

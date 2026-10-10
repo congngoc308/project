@@ -17,6 +17,8 @@ from app.errors import DomainError, Forbidden, Invalid
 from app.models import User
 
 COOKIE = "qlb_session"
+# PIN cố định 5 số: máy tính bảng tự gửi khi đủ số, không cần phím "Vào".
+PIN_LEN = 5
 MAX_PIN_FAILS = 5
 PIN_LOCK_MINUTES = 5
 
@@ -34,8 +36,8 @@ def check_secret(raw: str, hashed: str | None) -> bool:
 
 
 def validate_pin(pin: str) -> None:
-    if not (pin.isdigit() and 4 <= len(pin) <= 6):
-        raise Invalid("PIN phải gồm 4–6 chữ số")
+    if not (pin.isdigit() and len(pin) == PIN_LEN):
+        raise Invalid(f"PIN phải gồm đúng {PIN_LEN} chữ số")
 
 
 def make_token(user: User) -> str:

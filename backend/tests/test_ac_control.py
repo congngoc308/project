@@ -16,7 +16,7 @@ def _open_shift_with_beef(as_user, ref, beef=1000, rau=3000):
     receive(sk, ref["BO"], beef / 1000)
     receive(sk, ref["RAU"], rau / 1000, price=30000)
     advance()
-    handover(sk, chef, ref["beptruong1"], "2221", {ref["BO"]: beef, ref["RAU"]: rau})
+    handover(sk, chef, ref["beptruong1"], "00000", {ref["BO"]: beef, ref["RAU"]: rau})
     advance()
 
 
@@ -62,10 +62,10 @@ def test_ac13_receipt_error_conclusion_is_linked_adjustment_not_waste(as_user, r
     sk, chef, mgr = as_user("thukho1"), as_user("beptruong1"), as_user("quanly")
     r = receive(sk, ref["BO"], 1)  # phiếu ghi 1 kg nhưng hóa đơn chỉ 1 lạng
     advance()
-    out = handover(sk, chef, ref["beptruong1"], "2221", {ref["BO"]: 1000}, received={ref["BO"]: 100}, expect=409)
+    out = handover(sk, chef, ref["beptruong1"], "00000", {ref["BO"]: 1000}, received={ref["BO"]: 100}, expect=409)
     assert out["response"]["data"][0]["received_qty"] == 100
     sk.post(f"/handovers/{out['handover']['id']}/cancel", {"note": "Cân lại thấy chỉ có 100 g"})
-    handover(sk, chef, ref["beptruong1"], "2221", {ref["BO"]: 100})
+    handover(sk, chef, ref["beptruong1"], "00000", {ref["BO"]: 100})
     advance(60)
     s = sk.post("/counts", {"kind": "periodic", "location": "kho", "ingredient_ids": [ref["BO"]]})
     sk.post(f"/counts/{s['id']}/submit", {"counts": {str(ref["BO"]): 0}})
@@ -103,7 +103,7 @@ def test_ac14_dish_out_only_locks_sale(as_user, ref, db):
 
 def test_ac15_small_same_direction_shortage_three_shifts_trend(as_user, ref, db):
     sk, sv, k = as_user("thukho1"), as_user("phucvu1"), as_user("bep1")
-    chefs = [("beptruong1", "2221", 9, 6), ("beptruong2", "2222", 9, 14), ("beptruong1", "2221", 10, 6)]
+    chefs = [("beptruong1", "00000", 9, 6), ("beptruong2", "00000", 9, 14), ("beptruong1", "00000", 10, 6)]
     for i, (chef, pin, day, hour) in enumerate(chefs):
         clock.set_fixed(datetime(2026, 10, day, hour, 30, tzinfo=clock.VN))
         receive(sk, ref["BO"], 1)

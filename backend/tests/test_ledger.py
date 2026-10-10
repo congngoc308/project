@@ -25,7 +25,7 @@ def test_concurrent_starts_keep_book_consistent(as_user, ref, db):
     sk = as_user("thukho1")
     receive(sk, ref["BO"], 2)
     receive(sk, ref["RAU"], 2, price=30000)
-    handover(sk, as_user("beptruong1"), ref["beptruong1"], "2221", {ref["BO"]: 2000, ref["RAU"]: 2000})
+    handover(sk, as_user("beptruong1"), ref["beptruong1"], "00000", {ref["BO"]: 2000, ref["RAU"]: 2000})
     advance()
     o = as_user("phucvu1").post("/orders", {"table_label": "B9", "items": [{"menu_item_id": ref["BX_dish"]}] * 24})
     ids = [i["id"] for i in o["items"]]

@@ -1,273 +1,427 @@
+/**
+ * Chứng từ của quản lý theo thiết kế "Admin Kho Dinh Muc" (Claude Design): Phiếu nhập, Phiếu hao hụt, Ca và bàn giao.
+ * Dữ liệu thật từ /receipts, /waste, /shifts, /reports/shifts, /handovers. Sửa sai luôn là giao dịch mới có liên kết.
+ */
 import { useQuery } from "@tanstack/react-query"
-import { Check, FileText, Link2, Scale, ShieldAlert, ShoppingBasket, Trash2, X } from "@/components/icons"
-import { useMemo, useState } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
 
-import { HBars } from "@/components/charts"
 import { useAsk } from "@/components/ask"
-import { Empty, LocationBadge, Loading, PageHeader, Section, StatusPill, TierBadge, FilterTabs } from "@/components/common"
-import { DataTable, type ColumnDef } from "@/components/DataTable"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { api, qs } from "@/lib/api"
-import { dateOnly, dateTime, money, moneyShort, pct, qty, signedQty, time, unit } from "@/lib/format"
-import type { Handover, Receipt, ReceiptLine, Shift, Tier, WasteSlip } from "@/lib/types"
+import { Loading } from "@/components/common"
+import {
+  AlertTriangle, Ban, CalendarX, Check, CheckCircle2, FileSearch, HourglassMedium, Info, Knife, Leaf, Link2, NotePencil,
+  PackageCheck, RotateCcw, SealCheck, ShieldAlert, ShoppingBasket, Siren, Utensils, Wine, X, type IconType,
+} from "@/components/icons"
+import { A, Btn, CARD, Code, EmptyNote, FilterPills, HeadStat, Modal, PageHead, Pill, adminToast, delay } from "@/layouts/AdminBits"
+import { api } from "@/lib/api"
+import { dateOnly, dateTime, longClock, money, num, qty, signedQty, time, unit } from "@/lib/format"
+import type { Handover, Receipt, Shift, Tier, WasteSlip } from "@/lib/types"
 import { useAction } from "@/lib/useAction"
-import { useDateRange } from "@/pages/manager/AvtPage"
+import { cn } from "@/lib/utils"
 import { WASTE_STATUS } from "@/pages/ops/WastePage"
 
-const RECEIPT_STATUS: Record<Receipt["status"], { label: string; tone: "good" | "warn" | "neutral" | "info" }> = {
-  draft: { label: "Nháp", tone: "neutral" },
-  received: { label: "Đã nhận", tone: "good" },
-  pending_approval: { label: "Chờ duyệt", tone: "warn" },
-  approved: { label: "Đã duyệt", tone: "info" },
-  cancelled: { label: "Đã hủy", tone: "neutral" },
+/** Ô nhập của thiết kế: viền #8a817c (3 : 1 với nền), cao 44px. */
+const INPUT = "h-11 rounded-xl border border-[#8a817c] bg-white px-3 text-[15px] font-medium text-[#1c1917] placeholder:text-[#6b645e]"
+const dm = (v: string | null | undefined) => (v ? dateOnly(v).slice(0, 5) : "-")
+const slideRow = "motion-safe:transition-[max-height,opacity,transform] motion-safe:duration-[450ms] motion-safe:ease-[cubic-bezier(.16,1,.3,1)]"
+
+/* ---------------- Phiếu nhập ---------------- */
+
+const RECEIPT_STATUS: Record<Receipt["status"], { label: string; bg: string; c: string; icon: IconType }> = {
+  draft: { label: "Nháp", bg: A.line2, c: A.sub, icon: NotePencil },
+  received: { label: "Đã nhận", bg: A.okBg, c: A.ok, icon: PackageCheck },
+  pending_approval: { label: "Chờ duyệt", bg: A.warnBg, c: A.warn, icon: HourglassMedium },
+  approved: { label: "Đã duyệt", bg: "#e4eefb", c: "#1d4f91", icon: SealCheck },
+  cancelled: { label: "Đã hủy", bg: A.line2, c: A.sub, icon: Ban },
 }
+const R_TABS = [
+  { key: "pending_approval", label: "Chờ duyệt" },
+  { key: "received", label: "Đã nhận" },
+  { key: "approved", label: "Đã duyệt" },
+  { key: "draft", label: "Nháp" },
+  { key: "all", label: "Tất cả" },
+] as const
+type RTab = (typeof R_TABS)[number]["key"]
+
+const lineQty = (l: Receipt["lines"][number]) => Number(l.received_qty ?? l.ordered_qty)
+const receiptTotal = (r: Receipt) => r.lines.reduce((s, l) => s + lineQty(l) * Number(l.unit_price), 0)
 
 export function ReceiptsAdminPage() {
-  const [status, setStatus] = useState("pending_approval")
-  const q = useQuery({ queryKey: ["receipts", status], queryFn: () => api.get<Receipt[]>(`/receipts${qs({ status: status === "all" ? "" : status })}`) })
-  const [view, setView] = useState<Receipt | null>(null)
-  const [fix, setFix] = useState<ReceiptLine | null>(null)
+  const [tab, setTab] = useState<RTab>("pending_approval")
+  // Lấy 100 phiếu gần nhất một lần rồi lọc tại chỗ để chip lọc có số đếm.
+  const q = useQuery({ queryKey: ["receipts", "all"], queryFn: () => api.get<Receipt[]>("/receipts") })
+  const [snap, setSnap] = useState<Receipt | null>(null)
+  const view = snap ? (q.data?.find((r) => r.id === snap.id) ?? snap) : null
+  const [fixId, setFixId] = useState<number | null>(null)
   const [fixQty, setFixQty] = useState("")
   const [fixReason, setFixReason] = useState("")
-  const approve = useAction((id: number) => api.post<Receipt>(`/receipts/${id}/approve`, { note: "" }), { success: "Đã duyệt phiếu nhập", invalidate: [["receipts"], ["dashboard"]], onSuccess: setView })
-  const correct = useAction(() => api.post<Receipt>(`/receipt-lines/${fix!.id}/correct`, { correct_qty: Number(fixQty), reason: fixReason }), {
-    success: "Đã tạo điều chỉnh có liên kết tới phiếu gốc", invalidate: [["receipts"]],
-    onSuccess: (r) => { setFix(null); setView(r); setFixQty(""); setFixReason("") },
+  const approve = useAction((id: number) => api.post<Receipt>(`/receipts/${id}/approve`, { note: "" }), {
+    invalidate: [["receipts"], ["dashboard"]],
+    onSuccess: (r) => { setSnap(r); adminToast(`Đã duyệt ${r.code}`) },
   })
-  const columns = useMemo<ColumnDef<Receipt, unknown>[]>(() => [
-    { accessorKey: "code", header: "Mã", cell: ({ row }) => <span className="font-medium">{row.original.code}</span> },
-    { accessorKey: "supplier", header: "Nhà cung cấp" },
-    { accessorKey: "received_at", header: "Nhận lúc", cell: ({ row }) => dateTime(row.original.received_at) },
-    { accessorKey: "received_by", header: "Thủ kho", cell: ({ row }) => row.original.received_by ?? "-" },
-    { id: "lines", header: "Hàng", cell: ({ row }) => <span className="text-xs">{row.original.lines.map((l) => `${l.ingredient} ${Number(l.received_qty ?? l.ordered_qty)} ${l.unit}`).join(" · ")}</span> },
-    { id: "status", header: "Trạng thái", cell: ({ row }) => <StatusPill tone={RECEIPT_STATUS[row.original.status].tone}>{RECEIPT_STATUS[row.original.status].label}</StatusPill> },
-    { id: "anom", header: "Bất thường", cell: ({ row }) => <span className="text-xs text-warning-ink">{row.original.anomalies.join("; ")}</span> },
-  ], [])
+  const correct = useAction(() => api.post<Receipt>(`/receipt-lines/${fixId}/correct`, { correct_qty: Number(fixQty), reason: fixReason.trim() }), {
+    invalidate: [["receipts"]],
+    onSuccess: (r) => { setSnap(r); setFixId(null); setFixQty(""); setFixReason(""); adminToast("Đã tạo điều chỉnh có liên kết tới phiếu gốc") },
+  })
+  const all = q.data ?? []
+  const count = (k: RTab) => (k === "all" ? all.length : all.filter((r) => r.status === k).length)
+  const list = all.filter((r) => tab === "all" || r.status === tab)
+  const canFix = fixQty !== "" && Number.isFinite(Number(fixQty)) && !!fixReason.trim() && !correct.isPending
+  const open = (r: Receipt) => { setSnap(r); setFixId(null) }
+
   return (
-    <div className="space-y-4">
-      <PageHeader title="Phiếu nhập" icon={ShoppingBasket} description="Tồn Kho tăng ngay khi thủ kho xác nhận Đã nhận. Phiếu lệch số đặt, lệch đơn giá hoặc lệch lớn so với lịch sử nhập chuyển Chờ duyệt. Sửa sai bằng điều chỉnh có liên kết, không sửa bản gốc." />
-      <FilterTabs label="Lọc phiếu theo trạng thái" value={status} onChange={setStatus} options={[{ value: "pending_approval", label: "Chờ duyệt" }, { value: "received", label: "Đã nhận" }, { value: "approved", label: "Đã duyệt" }, { value: "draft", label: "Nháp" }, { value: "all", label: "Tất cả" }]} />
-      {q.isLoading ? <Loading /> : <DataTable columns={columns} data={q.data ?? []} onRowClick={setView} empty="Không có phiếu" />}
-      <Dialog open={!!view} onOpenChange={(v) => !v && setView(null)}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader><DialogTitle>{view?.code} · {view?.supplier}</DialogTitle></DialogHeader>
-          {view && (
-            <div className="space-y-3 text-sm">
-              <div className="text-muted-foreground">Tạo bởi {view.created_by}, nhận {dateTime(view.received_at)} bởi {view.received_by ?? "-"}{view.approved_by && `, duyệt bởi ${view.approved_by}`}</div>
-              {view.anomalies.length > 0 && <div className="rounded-lg border border-status-warning/60 bg-status-warning/10 p-2 text-warning-ink">{view.anomalies.join("; ")}</div>}
-              <table className="w-full">
-                <thead className="text-xs text-muted-foreground"><tr><th className="text-left">Nguyên liệu</th><th className="text-right">Đặt</th><th className="text-right">Nhận</th><th className="text-right">Quy đổi</th><th className="text-right">Đơn giá</th><th className="text-right">Điều chỉnh LK</th><th /></tr></thead>
-                <tbody>
-                  {view.lines.map((l) => (
-                    <tr key={l.id} className="border-t">
-                      <td className="py-1.5">{l.ingredient}{l.diff_reason && <div className="text-xs text-muted-foreground">Lý do lệch: {l.diff_reason}</div>}</td>
-                      <td className="text-right tabular">{Number(l.ordered_qty)} {unit(l.unit)}</td>
-                      <td className="text-right tabular">{l.received_qty !== null ? `${Number(l.received_qty)} ${unit(l.unit)}` : "-"}</td>
-                      <td className="text-right tabular">{qty(l.received_qty_base, l.base_unit)}</td>
-                      <td className="text-right tabular">{money(l.unit_price)}</td>
-                      <td className="text-right tabular">{Number(l.linked_adjustment) ? signedQty(l.linked_adjustment, l.base_unit) : "-"}</td>
-                      <td className="text-right">{l.received_qty !== null && <Button size="sm" variant="ghost" onClick={() => setFix(l)}><Link2 className="size-3.5" /> Điều chỉnh</Button>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {view.invoice_image && <a className="text-paprika-ink underline underline-offset-4 hover:decoration-2" href={`/api/uploads/${view.invoice_image}`} target="_blank" rel="noreferrer">Xem ảnh hóa đơn</a>}
-              {view.status === "pending_approval" && <DialogFooter><Button onClick={() => approve.mutate(view.id)}><Check className="size-4" /> Duyệt phiếu</Button></DialogFooter>}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-      <Dialog open={!!fix} onOpenChange={(v) => !v && setFix(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Điều chỉnh có liên kết: {fix?.ingredient}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Ghi số đúng theo hóa đơn. Hệ thống tạo giao dịch điều chỉnh trỏ tới dòng phiếu gốc; bản gốc giữ nguyên.</p>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block space-y-1.5"><span className="text-sm font-medium">Số nhận đúng ({fix && unit(fix.unit)})</span><Input inputMode="decimal" value={fixQty} onChange={(e) => setFixQty(e.target.value.replace(",", "."))} /></label>
-            <label className="block space-y-1.5"><span className="text-sm font-medium">Lý do</span><Input value={fixReason} onChange={(e) => setFixReason(e.target.value)} /></label>
+    <div className="flex flex-col gap-6 text-[#1c1917]">
+      <PageHead title="Phiếu nhập" desc="Tồn Kho tăng ngay khi thủ kho xác nhận Đã nhận. Phiếu lệch số đặt, lệch đơn giá hoặc lệch lớn so với lịch sử nhập chuyển Chờ duyệt. Sửa sai bằng điều chỉnh có liên kết, không sửa bản gốc." />
+      <div className="a-rise" style={{ animationDelay: "50ms" }}>
+        <FilterPills label="Lọc phiếu theo trạng thái" value={tab} onChange={setTab} items={R_TABS.map((t) => ({ ...t, n: q.data ? count(t.key) : undefined }))} />
+      </div>
+      {q.isLoading ? <Loading /> : (
+        <div className="flex flex-col gap-3">
+          {list.map((r, i) => {
+            const st = RECEIPT_STATUS[r.status]
+            const pending = r.status === "pending_approval"
+            return (
+              <button key={r.id} type="button" onClick={() => open(r)} style={delay(i, 80, 50)}
+                className="a-rise grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-[18px] rounded-[20px] bg-[#fdfdfc] px-[22px] py-[18px] text-left shadow-[0_1px_2px_rgba(41,37,36,.05),0_6px_20px_-12px_rgba(41,37,36,.16),0_0_0_1px_rgba(28,25,23,.05)] transition-[transform,box-shadow] duration-[450ms] ease-[cubic-bezier(.16,1,.3,1)] hover:-translate-y-[3px] hover:shadow-[0_2px_4px_rgba(41,37,36,.06),0_22px_40px_-22px_rgba(41,37,36,.36),0_0_0_1px_rgba(28,25,23,.06)]">
+                <span className="flex size-[52px] items-center justify-center rounded-[15px]" style={{ background: pending ? A.warnBg : "#f2f0ee", color: pending ? A.warn : A.ink }}>
+                  <ShoppingBasket weight="duotone" className="size-[26px]" aria-hidden />
+                </span>
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className="flex flex-wrap items-center gap-2.5"><Code>{r.code}</Code><span className="text-base font-bold">{r.supplier}</span></span>
+                  <span className="text-sm text-[#4f4a45]">
+                    {r.received_at ? `Nhận ${dateTime(r.received_at)} bởi ${r.received_by ?? "-"}` : r.order_date ? `Đặt cho ngày ${dm(r.order_date)}, chưa nhận` : "Chưa nhận"}
+                  </span>
+                  <span className="text-sm">{r.lines.map((l) => `${l.ingredient} ${num(lineQty(l), 1)} ${unit(l.unit)}`).join(", ")}</span>
+                  {r.anomalies.length > 0 && (
+                    <span className="flex items-start gap-1.5 text-sm font-semibold text-[#6b4300]"><AlertTriangle weight="bold" className="mt-0.5 size-4 shrink-0" aria-hidden />{r.anomalies.join("; ")}</span>
+                  )}
+                </span>
+                <span className="flex flex-col items-end gap-2">
+                  <Pill bg={st.bg} c={st.c} icon={st.icon} className="h-[30px] px-3">{st.label}</Pill>
+                  <span className="text-base font-bold tabular">{money(receiptTotal(r))}</span>
+                </span>
+              </button>
+            )
+          })}
+          {!list.length && <div className={cn(CARD, "a-fade")}><EmptyNote>Không có phiếu</EmptyNote></div>}
+        </div>
+      )}
+
+      <Modal open={!!view} onClose={() => setSnap(null)} width={900} kicker={view?.code} title={view?.supplier ?? ""}
+        meta={view ? `Tạo bởi ${view.created_by}${view.received_at ? `, nhận ${dateTime(view.received_at)} bởi ${view.received_by ?? "-"}` : ""}${view.approved_by ? `, duyệt bởi ${view.approved_by}` : ""}` : undefined}
+        footer={view && (
+          <div className="flex w-full flex-wrap items-center justify-between gap-3">
+            <span className="text-sm text-[#4f4a45]">Điều chỉnh tạo giao dịch mới trỏ tới dòng phiếu gốc; bản gốc giữ nguyên.</span>
+            <span className="flex flex-wrap gap-2.5">
+              {view.invoice_image && (
+                <a href={`/api/uploads/${view.invoice_image}`} target="_blank" rel="noreferrer"
+                  className="inline-flex h-12 items-center rounded-xl px-4 text-[15px] font-bold text-[#7c3410] underline-offset-4 hover:bg-[#fbeae0] hover:underline">Xem ảnh hóa đơn</a>
+              )}
+              {view.status === "pending_approval" && <Btn kind="accent" icon={Check} disabled={approve.isPending} onClick={() => approve.mutate(view.id)}>Duyệt phiếu</Btn>}
+            </span>
           </div>
-          <DialogFooter><Button disabled={fixQty === "" || !fixReason.trim() || correct.isPending} onClick={() => correct.mutate(undefined)}>Tạo điều chỉnh</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}>
+        {view && (
+          <>
+            {view.anomalies.length > 0 && (
+              <div className="flex gap-2.5 rounded-xl bg-[#fdf0d2] px-3.5 py-3 text-sm font-semibold text-[#6b4300]">
+                <AlertTriangle weight="duotone" className="size-5 shrink-0" aria-hidden /><span className="min-w-0 flex-1">{view.anomalies.join("; ")}</span>
+              </div>
+            )}
+            <div className="overflow-x-auto pt-2">
+              <div className="min-w-[760px] text-sm tabular">
+                <div className="grid grid-cols-[1.4fr_90px_90px_100px_120px_120px_120px] gap-2.5 border-b border-[#e2ded9] py-2.5 font-semibold text-[#4f4a45]">
+                  <span>Nguyên liệu</span><span className="text-right">Đặt</span><span className="text-right">Nhận</span><span className="text-right">Quy đổi</span>
+                  <span className="text-right">Đơn giá</span><span className="text-right">Điều chỉnh LK</span><span />
+                </div>
+                {view.lines.map((l) => {
+                  const fixing = fixId === l.id
+                  return (
+                    <div key={l.id} className="flex flex-col border-b border-[#efedeb]">
+                      <div className="grid grid-cols-[1.4fr_90px_90px_100px_120px_120px_120px] items-center gap-2.5 py-3">
+                        <span className="flex flex-col gap-0.5"><span className="font-bold">{l.ingredient}</span>{l.diff_reason && <span className="text-[#4f4a45]">Lý do lệch: {l.diff_reason}</span>}</span>
+                        <span className="text-right">{num(l.ordered_qty, 1)} {unit(l.unit)}</span>
+                        <span className="text-right">{l.received_qty !== null ? `${num(l.received_qty, 1)} ${unit(l.unit)}` : "-"}</span>
+                        <span className="text-right">{qty(l.received_qty_base, l.base_unit)}</span>
+                        <span className="text-right">{money(l.unit_price)}</span>
+                        <span className="text-right font-bold">{Number(l.linked_adjustment) ? signedQty(l.linked_adjustment, l.base_unit) : "-"}</span>
+                        <span className="text-right">
+                          {l.received_qty !== null && (
+                            <button type="button" aria-expanded={fixing} onClick={() => { setFixId(fixing ? null : l.id); setFixQty(""); setFixReason("") }}
+                              className="inline-flex h-11 items-center gap-1.5 rounded-[10px] px-3 font-bold whitespace-nowrap text-[#7c3410] transition-colors hover:bg-[#fbeae0]">
+                              <Link2 weight="bold" className="size-4" aria-hidden />Điều chỉnh
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                      {fixing && (
+                        <div className="a-rise flex flex-wrap items-end gap-2.5 pb-3.5" style={{ animationDuration: ".35s" }}>
+                          <label className="flex flex-col gap-1.5 text-sm font-semibold">Số nhận đúng ({unit(l.unit)})
+                            <input autoFocus inputMode="decimal" value={fixQty} onChange={(e) => setFixQty(e.target.value.replace(",", ".").replace(/[^\d.]/g, ""))} className={cn(INPUT, "w-[140px]")} />
+                          </label>
+                          <label className="flex min-w-[200px] flex-1 flex-col gap-1.5 text-sm font-semibold">Lý do
+                            <input value={fixReason} onChange={(e) => setFixReason(e.target.value)} placeholder="Theo hóa đơn số..." className={INPUT} />
+                          </label>
+                          <button type="button" disabled={!canFix} onClick={() => correct.mutate(undefined)}
+                            className="h-11 rounded-xl bg-[#1c1917] px-4 text-sm font-bold whitespace-nowrap text-[#fafaf9] transition-colors disabled:bg-[#e9e6e3] disabled:text-[#4f4a45]">
+                            Tạo điều chỉnh
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   )
 }
+
+/* ---------------- Phiếu hao hụt ---------------- */
+
+const W_TABS = [
+  { key: "pending", label: "Chờ duyệt" },
+  { key: "approved", label: "Đã duyệt" },
+  { key: "rejected", label: "Từ chối" },
+  { key: "all", label: "Tất cả" },
+] as const
+type WTab = (typeof W_TABS)[number]["key"]
+const isPending = (s: WasteSlip) => s.status === "pending_chef" || s.status === "pending_manager"
+const inTab = (s: WasteSlip, t: WTab) => t === "all" || (t === "pending" ? isPending(s) : s.status === t)
+const WASTE_ICON: Record<string, IconType> = {
+  do_vo_roi: Wine, lam_lai: RotateCcw, lam_sai_mon: RotateCcw, khach_huy_sau_che_bien: Ban, hong_so_che: Knife,
+  het_han: CalendarX, hong_bao_quan: Leaf, dung_noi_bo: Utensils, tang_khach: Utensils, khac: Info,
+}
+const LOC: Record<string, string> = { kho: "Kho", bep: "Bếp" }
+const REJECT_PRESETS = ["Không đúng thực tế", "Sai nguyên liệu", "Sai lượng"]
 
 export function WasteAdminPage() {
   const ask = useAsk()
-  const [status, setStatus] = useState("pending")
-  const q = useQuery({ queryKey: ["waste", "admin", status], queryFn: () => api.get<WasteSlip[]>(`/waste${qs({ status: status === "all" ? "" : status })}`) })
-  const approve = useAction((id: number) => api.post(`/waste/${id}/approve`), { success: "Đã duyệt", invalidate: [["waste"], ["dashboard"]] })
-  const reject = useAction((v: { id: number; note: string }) => api.post(`/waste/${v.id}/reject`, { note: v.note }), { success: "Đã từ chối, đảo lại tồn", invalidate: [["waste"], ["dashboard"]] })
-  const columns = useMemo<ColumnDef<WasteSlip, unknown>[]>(() => [
-    { accessorKey: "at", header: "Lúc", cell: ({ row }) => dateTime(row.original.at) },
-    { accessorKey: "ingredient", header: "Nguyên liệu" },
-    { accessorKey: "location", header: "Vị trí", cell: ({ row }) => <LocationBadge location={row.original.location} /> },
-    { id: "qty", accessorFn: (r) => Number(r.qty), header: "Lượng", meta: { numeric: true }, cell: ({ row }) => qty(row.original.qty, row.original.unit) },
-    { accessorKey: "value", header: "Giá trị", meta: { numeric: true }, cell: ({ row }) => money(row.original.value) },
-    { accessorKey: "type_label", header: "Loại", cell: ({ row }) => <span>{row.original.type_label}<div className="text-xs text-muted-foreground">{row.original.reason}</div></span> },
-    { accessorKey: "created_by", header: "Người ghi" },
-    { id: "status", header: "Trạng thái", cell: ({ row }) => <StatusPill tone={WASTE_STATUS[row.original.status].tone}>{WASTE_STATUS[row.original.status].label}</StatusPill> },
-    { id: "act", header: "", enableSorting: false, cell: ({ row }) => row.original.status.startsWith("pending") ? (
-      <div className="flex gap-1">
-        <Button size="sm" onClick={() => approve.mutate(row.original.id)}><Check className="size-3.5" /> Duyệt</Button>
-        <Button size="sm" variant="ghost" aria-label="Từ chối" onClick={async () => {
-          const n = await ask.reason({ title: `Từ chối phiếu ${row.original.ingredient}?`, description: "Hao hụt sẽ được đảo lại vào tồn.", presets: ["Không đúng thực tế", "Sai nguyên liệu", "Sai lượng"], confirmLabel: "Từ chối", danger: true })
-          if (n) reject.mutate({ id: row.original.id, note: n })
-        }}><X className="size-3.5" /> Từ chối</Button>
-      </div>
-    ) : null },
-  ], [approve, reject, ask])
+  const [tab, setTab] = useState<WTab>("pending")
+  const q = useQuery({ queryKey: ["waste", "admin", "all"], queryFn: () => api.get<WasteSlip[]>("/waste") })
+  const [asking, setAsking] = useState<number | null>(null)
+  /** Phiếu vừa xử lý: giữ lại tại chỗ 0,45 giây để thu gọn rồi rời khỏi nhóm đang lọc. */
+  const [leaving, setLeaving] = useState<Record<number, boolean>>({})
+  const leave = (id: number) => {
+    setLeaving((x) => ({ ...x, [id]: true }))
+    window.setTimeout(() => setLeaving((x) => { const y = { ...x }; delete y[id]; return y }), 450)
+  }
+  const approve = useAction((s: WasteSlip) => api.post(`/waste/${s.id}/approve`).then(() => s), {
+    invalidate: [["waste"], ["dashboard"]],
+    onSuccess: (s) => { leave(s.id); adminToast(`Đã duyệt hao hụt ${s.ingredient} ${qty(s.qty, s.unit)}`) },
+  })
+  const reject = useAction((v: { s: WasteSlip; note: string }) => api.post(`/waste/${v.s.id}/reject`, { note: v.note }).then(() => v), {
+    invalidate: [["waste"], ["dashboard"]],
+    onSuccess: (v) => { leave(v.s.id); adminToast(`Đã từ chối hao hụt ${v.s.ingredient}, đảo lại tồn (${v.note})`) },
+  })
+  const doReject = (s: WasteSlip, note: string) => { setAsking(null); reject.mutate({ s, note }) }
+  const other = async (s: WasteSlip) => {
+    const n = await ask.reason({ title: `Từ chối phiếu ${s.ingredient}?`, description: "Hao hụt sẽ được đảo lại vào tồn.", presets: REJECT_PRESETS, confirmLabel: "Từ chối", danger: true })
+    if (n) doReject(s, n)
+  }
+
+  const all = q.data ?? []
+  const list = all.filter((s) => inTab(s, tab) || leaving[s.id])
+  const pendVal = all.filter(isPending).reduce((a, s) => a + Number(s.value), 0)
+
   return (
-    <div className="space-y-4">
-      <PageHeader title="Phiếu hao hụt" icon={Trash2} description="Hao hụt ghi tại thời điểm xảy ra, có loại và lý do. Trong hạn mức bếp trưởng duyệt, vượt hạn mức quản lý duyệt. Từ chối = đảo lại bằng giao dịch mới." />
-      <FilterTabs label="Lọc phiếu theo trạng thái" value={status} onChange={setStatus} options={[{ value: "pending", label: "Chờ duyệt" }, { value: "approved", label: "Đã duyệt" }, { value: "rejected", label: "Từ chối" }, { value: "all", label: "Tất cả" }]} />
-      {q.isLoading ? <Loading /> : <DataTable columns={columns} data={q.data ?? []} empty="Không có phiếu" />}
+    <div className="flex flex-col gap-6 text-[#1c1917]">
+      <PageHead title="Phiếu hao hụt"
+        desc="Hao hụt ghi tại thời điểm xảy ra, có loại và lý do. Trong hạn mức bếp trưởng duyệt, vượt hạn mức quản lý duyệt. Từ chối là đảo lại bằng giao dịch mới."
+        right={<HeadStat label="Giá trị chờ duyệt" value={q.data ? money(pendVal) : "-"} />} />
+      <div className="a-rise" style={{ animationDelay: "50ms" }}>
+        <FilterPills label="Lọc phiếu theo trạng thái" value={tab} onChange={(t) => { setTab(t); setAsking(null) }}
+          items={W_TABS.map((t) => ({ ...t, n: q.data ? all.filter((s) => inTab(s, t.key)).length : undefined }))} />
+      </div>
+      {q.isLoading ? <Loading /> : (
+        <div className={cn(CARD, "a-rise overflow-hidden")} style={{ animationDelay: "100ms" }}>
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px]">
+              {list.map((s, i) => {
+                const lv = !!leaving[s.id]
+                const pending = isPending(s)
+                const Icon = WASTE_ICON[s.waste_type] ?? FileSearch
+                const done = s.status === "approved" || s.status === "rejected"
+                return (
+                  <div key={s.id} className={cn("flex flex-col overflow-hidden", i > 0 && "border-t border-[#efedeb]", slideRow)}
+                    style={{ maxHeight: lv ? 0 : 320, opacity: lv ? 0 : 1, transform: lv ? "translateX(40px)" : "none" }}>
+                    <div className="grid grid-cols-[48px_minmax(180px,1.4fr)_minmax(150px,1fr)_120px_minmax(140px,auto)] items-center gap-4 px-[22px] py-4 text-sm">
+                      <span className="flex size-12 items-center justify-center rounded-[14px] bg-[#f2f0ee]"><Icon weight="duotone" className="size-6" aria-hidden /></span>
+                      <span className="flex flex-col gap-[3px]">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-[15px] font-bold">{s.ingredient}</span>
+                          <span className="font-bold tabular">{qty(s.qty, s.unit)}</span>
+                          <span className="text-[#4f4a45]">tại {LOC[s.location] ?? s.location}</span>
+                        </span>
+                        <span className="text-[#4f4a45]">{s.type_label}{s.reason ? `: ${s.reason}` : ""}</span>
+                        {s.status === "pending_manager" && (
+                          <span className="flex items-center gap-1.5 font-semibold text-[#6b4300]"><AlertTriangle weight="bold" className="size-4" aria-hidden />Vượt hạn mức, quản lý duyệt</span>
+                        )}
+                      </span>
+                      <span className="flex flex-col gap-[3px]"><span>Ghi bởi {s.created_by}</span><span className="font-mono text-[#4f4a45]">{dateTime(s.at)}</span></span>
+                      <span className="text-right text-[15px] font-bold tabular">{money(s.value)}</span>
+                      <span className="flex items-center justify-end gap-2">
+                        {pending && !lv && (
+                          <>
+                            <button type="button" aria-expanded={asking === s.id} onClick={() => setAsking(asking === s.id ? null : s.id)} disabled={reject.isPending}
+                              className="h-11 rounded-xl px-3.5 text-sm font-bold whitespace-nowrap text-[#8f1a1a] transition-colors hover:bg-[#fbe4e4]">Từ chối</button>
+                            <button type="button" onClick={() => approve.mutate(s)} disabled={approve.isPending}
+                              className="flex h-11 items-center gap-1.5 rounded-xl bg-[#1c1917] px-4 text-sm font-bold whitespace-nowrap text-[#fafaf9] transition-transform duration-[250ms] active:scale-[.96] disabled:opacity-80">
+                              <Check weight="bold" className="size-4" aria-hidden />Duyệt
+                            </button>
+                          </>
+                        )}
+                        {done && (
+                          <Pill className="h-[30px] px-3" icon={s.status === "approved" ? Check : X}
+                            bg={s.status === "approved" ? A.okBg : A.badBg} c={s.status === "approved" ? A.ok : A.bad}>
+                            {s.status === "approved" ? "Đã duyệt" : "Đã từ chối"}{s.approved_by ? `, ${s.approved_by}` : ""}
+                          </Pill>
+                        )}
+                        {pending && lv && <span className="sr-only">{WASTE_STATUS[s.status].label}</span>}
+                      </span>
+                    </div>
+                    {asking === s.id && pending && (
+                      <div className="a-rise flex flex-wrap items-center gap-2 pr-[22px] pb-4 pl-[86px]" style={{ animationDuration: ".35s" }}>
+                        <span className="text-sm font-semibold text-[#4f4a45]">Lý do từ chối, hao hụt sẽ đảo lại vào tồn:</span>
+                        {REJECT_PRESETS.map((p) => (
+                          <button key={p} type="button" onClick={() => doReject(s, p)}
+                            className="h-11 rounded-full bg-[#fbe4e4] px-3.5 text-sm font-bold whitespace-nowrap text-[#8f1a1a] transition-colors hover:bg-[#f6d0d0]">{p}</button>
+                        ))}
+                        <button type="button" onClick={() => other(s)} className="h-11 rounded-[10px] px-3 text-sm font-bold whitespace-nowrap text-[#8f1a1a] underline-offset-4 hover:underline">Lý do khác</button>
+                        <button type="button" onClick={() => setAsking(null)} className="h-11 rounded-[10px] px-3 text-sm font-semibold whitespace-nowrap text-[#4f4a45] hover:bg-[#f2f0ee]">Thôi</button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          {!list.length && <EmptyNote>Không có phiếu trong nhóm này</EmptyNote>}
+        </div>
+      )}
     </div>
   )
 }
+
+/* ---------------- Ca và bàn giao ---------------- */
+
+interface ShiftReportRow { id: number; variance_value: number | string; worst_tier: Tier; investigations: number }
+
+const HO_STATUS: Record<Handover["status"], { label: string; bg: string; c: string; dot: string; icon: IconType }> = {
+  pending: { label: "Chờ ký", bg: A.warnBg, c: A.warn, dot: "#fab219", icon: HourglassMedium },
+  signed: { label: "Đã ký", bg: A.okBg, c: A.ok, dot: "#0ca30c", icon: Check },
+  cancelled: { label: "Đã hủy", bg: A.line2, c: A.sub, dot: "#a8a29e", icon: Ban },
+}
+const HO_PAGE = 10
+
+/** Phút trong ngày theo giờ VN của giờ bắt đầu ca (để xếp cột Ca sáng trước Ca chiều). */
+const startMinutes = (s: Shift) => { const [h, m] = time(s.planned_start).split(":").map(Number); return h * 60 + m }
 
 export function ShiftsPage() {
-  const shifts = useQuery({ queryKey: ["shifts", 14], queryFn: () => api.get<Shift[]>("/shifts?days=14") })
+  const shifts = useQuery({ queryKey: ["shifts", 7], queryFn: () => api.get<Shift[]>("/shifts?days=7") })
+  const report = useQuery({ queryKey: ["r-shifts", "ca-7"], queryFn: () => api.get<ShiftReportRow[]>("/reports/shifts") })
   const handovers = useQuery({ queryKey: ["handovers"], queryFn: () => api.get<Handover[]>("/handovers") })
+  const [showAll, setShowAll] = useState(false)
+
+  const byId = useMemo(() => new Map((report.data ?? []).map((r) => [r.id, r])), [report.data])
+  const grid = useMemo(() => {
+    const list = shifts.data ?? []
+    const cols = new Map<string, Shift>()
+    for (const s of [...list].sort((a, b) => startMinutes(a) - startMinutes(b))) if (!cols.has(s.name)) cols.set(s.name, s)
+    const days = [...new Set(list.map((s) => s.business_date))].sort().reverse()
+    return {
+      cols: [...cols.values()],
+      days: days.map((d) => ({ date: d, cells: [...cols.keys()].map((n) => list.find((s) => s.business_date === d && s.name === n) ?? null) })),
+    }
+  }, [shifts.data])
+  const tmpl = { gridTemplateColumns: `90px repeat(${Math.max(1, grid.cols.length)}, minmax(0,1fr))` } as CSSProperties
+  const hos = handovers.data ?? []
+
   return (
-    <div className="space-y-4">
-      <PageHeader title="Ca & bàn giao" icon={Scale} description="Kỳ đo nhóm A tại Bếp là một ca: từ lúc bếp trưởng ký nhận bàn giao đến lúc thủ kho cân trả. Chênh lệch ca gắn với người đã ký nhận." />
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Section title="Ca 14 ngày gần nhất">
-          {shifts.isLoading ? <Loading /> : (
-            <ul className="divide-y text-sm">
-              {(shifts.data ?? []).map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span><b>{s.name}</b> {dateOnly(s.business_date)} <span className="text-muted-foreground">{time(s.planned_start)}-{time(s.planned_end)}</span></span>
-                  <span className="flex items-center gap-2">
-                    {s.head_chef && <span className="text-muted-foreground">{s.head_chef}</span>}
-                    {s.sod_violation && <StatusPill tone="bad"><ShieldAlert className="size-3" />Kiêm nhiệm</StatusPill>}
-                    <StatusPill tone={s.status === "closed" ? "good" : s.status === "open" ? "info" : "neutral"}>
-                      {s.status === "closed" ? `Đã cân trả ${time(s.closed_at)}` : s.status === "open" ? `Mở từ ${time(s.opened_at)}` : "Chưa bàn giao"}
-                    </StatusPill>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-        <Section title="Phiếu bàn giao">
-          {handovers.isLoading ? <Loading /> : (
-            <ul className="divide-y text-sm">
-              {(handovers.data ?? []).map((h) => (
-                <li key={h.id} className="py-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span><b>{h.code}</b>, {h.kind === "start" ? "Đầu ca" : "Bổ sung"}, {h.shift.name} {dateOnly(h.shift.business_date)}</span>
-                    <span className="flex items-center gap-2">
-                      {h.mismatch_attempts > 0 && <StatusPill tone="warn">{h.mismatch_attempts} lần lệch cân</StatusPill>}
-                      <StatusPill tone={h.status === "signed" ? "good" : h.status === "pending" ? "warn" : "neutral"}>{h.status === "signed" ? "Đã ký" : h.status === "pending" ? "Chờ ký" : "Đã hủy"}</StatusPill>
-                    </span>
-                  </div>
-                  <div className="text-muted-foreground">Xuất {dateTime(h.issued_at)} bởi {h.issued_by}{h.received_by && ` · ${h.received_by} ký ${time(h.signed_at)}`}</div>
-                  <div>{h.lines.map((l) => `${l.ingredient} ${qty(l.issued_qty, l.unit)}${l.received_qty !== null ? ` (bếp cân ${qty(l.received_qty, l.unit)})` : ""}`).join(" · ")}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-      </div>
-    </div>
-  )
-}
-
-// ---- Báo cáo khác ----
-
-interface WasteReport {
-  on_time_value: number
-  late_value: number
-  by_type: { key: string; value: number }[]
-  by_ingredient: { key: string; value: number; qty: number }[]
-  by_shift: { key: string; value: number }[]
-  by_person: { key: string; value: number }[]
-  by_dish: { key: string; value: number }[]
-}
-
-function SimpleTable({ head, rows }: { head: string[]; rows: (string | number)[][] }) {
-  if (!rows.length) return <Empty>Không có dữ liệu trong kỳ</Empty>
-  return (
-    <div className="overflow-x-auto surface">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{head.map((h, i) => <th key={h} className={`p-2 ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>)}</tr></thead>
-        <tbody>{rows.map((r, i) => <tr key={i} className="border-t">{r.map((c, j) => <td key={j} className={`p-2 ${j === 0 ? "" : "text-right tabular"}`}>{c}</td>)}</tr>)}</tbody>
-      </table>
-    </div>
-  )
-}
-
-export function ReportsPage() {
-  const { from, to, control } = useDateRange(14)
-  const p = qs({ date_from: from, date_to: to })
-  const waste = useQuery({ queryKey: ["r-waste", p], queryFn: () => api.get<WasteReport>(`/reports/waste${p}`) })
-  const shifts = useQuery({ queryKey: ["r-shifts", p], queryFn: () => api.get<{ id: number; business_date: string; name: string; head_chef: string | null; handed_value: number; variance_value: number; worst_tier: Tier; investigations: number; dishes: number; sod_violation: boolean; status: string }[]>(`/reports/shifts${p}`) })
-  const counts = useQuery({ queryKey: ["r-counts", p], queryFn: () => api.get<{ code: string; kind: string; location: string; cutoff_at: string; counted_by: string; ingredient: string; unit: string; book_qty: number; counted_qty: number; variance_qty: number; variance_pct: number | null; variance_value: number; tier: Tier }[]>(`/reports/counts${p}`) })
-  const receipts = useQuery({ queryKey: ["r-receipts", p], queryFn: () => api.get<{ code: string; supplier: string; received_at: string; ingredient: string; unit: string; ordered_qty: number; received_qty: number; unit_price: number; unit_cost_base: number; base_unit: string; status: string }[]>(`/reports/receipts${p}`) })
-  const sales = useQuery({ queryKey: ["r-sales", p], queryFn: () => api.get<{ date: string; shift: string; sold: number; cancel_after_start: number; remade: number; cancel_before_start: number; out_of_stock: number }[]>(`/reports/sales${p}`) })
-  const w = waste.data
-  return (
-    <div className="space-y-4">
-      <PageHeader title="Báo cáo khác" icon={FileText} description="Hao hụt theo loại / món / ca / nhân viên, chênh lệch theo ca và bếp trưởng, lịch sử kiểm kê, nhập hàng & đơn giá, số món bán/hủy/làm lại." />
-      <div className="surface p-3">{control}</div>
-      <Tabs defaultValue="waste">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="waste">Hao hụt</TabsTrigger><TabsTrigger value="shifts">Theo ca & bếp trưởng</TabsTrigger>
-          <TabsTrigger value="counts">Lịch sử kiểm kê</TabsTrigger><TabsTrigger value="receipts">Nhập hàng & đơn giá</TabsTrigger><TabsTrigger value="sales">Bán / hủy / làm lại</TabsTrigger>
-        </TabsList>
-        <TabsContent value="waste" className="space-y-4 pt-2">
-          {!w ? <Loading /> : (
+    <div className="flex flex-col gap-6 text-[#1c1917]">
+      <PageHead title="Ca và bàn giao" desc="Kỳ đo nhóm A tại Bếp là một ca: từ lúc bếp trưởng ký nhận bàn giao đến lúc thủ kho cân trả. Chênh lệch ca gắn với người đã ký nhận." />
+      <div className="flex flex-wrap items-start gap-4">
+        <section className={cn(CARD, "a-rise flex min-w-0 flex-[1.2_1_520px] flex-col gap-3.5 p-6")} style={{ animationDelay: "50ms" }}>
+          <h3 className="m-0 font-display text-xl font-bold tracking-[-.02em]">Bảng ca 7 ngày</h3>
+          {shifts.isLoading ? <Loading rows={4} /> : (
             <>
-              <div className="flex flex-wrap gap-6 text-sm">
-                <span>Ghi đúng lúc: <b>{money(w.on_time_value)}</b></span>
-                <span>Ghi muộn qua điều tra: <b className="text-critical-ink">{money(w.late_value)}</b></span>
+              <div className="grid gap-2 text-sm font-semibold text-[#4f4a45]" style={tmpl}>
+                <span />{grid.cols.map((c) => <span key={c.name}>{c.name} {time(c.planned_start)}-{time(c.planned_end)}</span>)}
               </div>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <Section title="Theo loại"><HBars diverging={false} rows={w.by_type.map((r) => ({ key: r.key, label: r.key, value: Number(r.value) }))} format={moneyShort} /></Section>
-                <Section title="Theo nguyên liệu"><HBars diverging={false} rows={w.by_ingredient.map((r) => ({ key: r.key, label: r.key, value: Number(r.value) }))} format={moneyShort} /></Section>
-                <Section title="Theo nhân viên (người ghi / người chịu trách nhiệm)"><HBars diverging={false} rows={w.by_person.map((r) => ({ key: r.key, label: r.key, value: Number(r.value) }))} format={moneyShort} /></Section>
-                <Section title="Theo món (hủy sau chế biến, làm lại)"><HBars diverging={false} rows={w.by_dish.map((r) => ({ key: r.key, label: r.key, value: Number(r.value) }))} format={moneyShort} /></Section>
-              </div>
-              <Section title="Theo ca"><SimpleTable head={["Ca", "Giá trị"]} rows={w.by_shift.map((r) => [r.key, money(r.value)])} /></Section>
+              {grid.days.map((dy, i) => (
+                <div key={dy.date} className="a-slide grid items-stretch gap-2" style={{ ...tmpl, animationDuration: ".5s", ...delay(i, 60, 50) }}>
+                  <span className="flex flex-col justify-center"><span className="text-[15px] font-bold">{dm(dy.date)}</span><span className="text-sm text-[#4f4a45]">{longClock(dy.date).split(" ")[0]}</span></span>
+                  {dy.cells.map((s, k) => {
+                    if (!s) return <div key={k} className="rounded-xl bg-[#f5f3f1] px-3 py-2.5 text-sm text-[#4f4a45]">-</div>
+                    const r = byId.get(s.id)
+                    const open = s.status === "open", closed = s.status === "closed"
+                    const tier = closed ? r?.worst_tier : undefined
+                    const bg = open ? A.paprikaSoft : s.sod_violation ? "#fbefee" : tier === "must" ? "#fdf3f2" : tier === "warn" ? "#fdf8ea" : "#f5f3f1"
+                    return (
+                      <div key={s.id} className="flex flex-col gap-1 rounded-xl px-3 py-2.5" style={{ background: bg, boxShadow: open ? `0 0 0 2px ${A.paprika}` : "none" }}>
+                        <span className="flex items-center justify-between gap-1.5">
+                          <span className="text-sm font-bold">{s.head_chef ?? "Chưa có bếp trưởng"}</span>
+                          {s.sod_violation && (
+                            <span title={s.sod_notes || "Kiêm nhiệm"} className="flex items-center gap-1 text-sm font-bold whitespace-nowrap text-[#8f1a1a]"><ShieldAlert weight="bold" className="size-3.5" aria-hidden />Kiêm nhiệm</span>
+                          )}
+                        </span>
+                        <span className="flex justify-between gap-1.5 text-sm" style={{ color: open ? A.paprikaInk : A.sub }}>
+                          <span>{open ? `Đang mở từ ${time(s.opened_at)}` : closed ? `Đã cân trả ${time(s.closed_at)}` : "Chưa bàn giao"}</span>
+                          <span className="flex items-center gap-1 font-bold text-[#1c1917] tabular">
+                            {tier === "must" && <Siren weight="bold" className="size-3.5 text-[#8f1a1a]" aria-label="Phải điều tra" />}
+                            {tier === "warn" && <AlertTriangle weight="bold" className="size-3.5 text-[#6b4300]" aria-label="Cảnh báo" />}
+                            {closed && r ? money(r.variance_value) : "-"}
+                          </span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+              <p className="m-0 text-sm text-[#4f4a45]">Số bên phải là giá trị chênh lệch Bếp sau cân trả.</p>
             </>
           )}
-        </TabsContent>
-        <TabsContent value="shifts" className="pt-2">
-          {shifts.isLoading ? <Loading /> : (
-            <div className="overflow-x-auto surface">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-2 text-left">Ca</th><th className="p-2 text-left">Bếp trưởng</th><th className="p-2 text-right">Món</th><th className="p-2 text-right">Giá trị bàn giao</th><th className="p-2 text-right">Chênh lệch</th><th className="p-2">Mức</th><th className="p-2 text-right">Phiếu điều tra</th><th className="p-2" /></tr></thead>
-                <tbody>{(shifts.data ?? []).map((s) => (
-                  <tr key={s.id} className="border-t">
-                    <td className="p-2">{s.name} {dateOnly(s.business_date)}</td><td className="p-2">{s.head_chef ?? "-"}</td>
-                    <td className="p-2 text-right tabular">{s.dishes}</td><td className="p-2 text-right tabular">{money(s.handed_value)}</td>
-                    <td className="p-2 text-right font-medium tabular">{money(s.variance_value)}</td><td className="p-2"><TierBadge tier={s.worst_tier} short /></td>
-                    <td className="p-2 text-right tabular">{s.investigations || "-"}</td>
-                    <td className="p-2">{s.sod_violation && <StatusPill tone="bad">Kiêm nhiệm</StatusPill>}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
+        </section>
+
+        <section className={cn(CARD, "a-rise flex min-w-0 flex-[1_1_400px] flex-col gap-1.5 p-6")} style={{ animationDelay: "120ms" }}>
+          <h3 className="m-0 mb-2 font-display text-xl font-bold tracking-[-.02em]">Phiếu bàn giao</h3>
+          {handovers.isLoading ? <Loading rows={3} /> : !hos.length ? <EmptyNote icon={CheckCircle2}>Chưa có phiếu bàn giao</EmptyNote> : (
+            <>
+              {(showAll ? hos : hos.slice(0, HO_PAGE)).map((h, i) => {
+                const st = HO_STATUS[h.status]
+                return (
+                  <div key={h.id} className="a-rise relative flex flex-col gap-1.5 border-l-2 border-[#efedeb] py-3.5 pl-6" style={{ animationDuration: ".55s", ...delay(Math.min(i, 10), 100, 60) }}>
+                    <span aria-hidden className="absolute top-[18px] -left-[7px] size-3 rounded-full shadow-[0_0_0_3px_#fdfdfc]" style={{ background: st.dot }} />
+                    <div className="flex flex-wrap items-center justify-between gap-2.5">
+                      <span className="text-[15px] font-bold"><Code>{h.code}</Code> {h.kind === "start" ? "Đầu ca" : "Bổ sung"}, {h.shift.name} {dm(h.shift.business_date)}</span>
+                      <span className="flex gap-1.5">
+                        {h.mismatch_attempts > 0 && <Pill bg={A.warnBg} c={A.warn} icon={AlertTriangle}>{h.mismatch_attempts} lần lệch cân</Pill>}
+                        <Pill bg={st.bg} c={st.c} icon={st.icon}>{st.label}</Pill>
+                      </span>
+                    </div>
+                    <span className="text-sm text-[#4f4a45]">Xuất {dateTime(h.issued_at)} bởi {h.issued_by}{h.received_by ? `, ${h.received_by} ký ${time(h.signed_at)}` : ""}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {h.lines.map((l) => (
+                        <span key={l.id} className="flex min-h-[30px] items-center rounded-[9px] bg-[#f5f3f1] px-2.5 text-sm tabular">
+                          {l.ingredient} {qty(l.issued_qty, l.unit)}{l.received_qty !== null ? ` (bếp cân ${qty(l.received_qty, l.unit)})` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+              {hos.length > HO_PAGE && (
+                <button type="button" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}
+                  className="mt-2 h-11 self-start rounded-xl bg-[#efedeb] px-4 text-sm font-bold transition-colors hover:bg-[#e7e4e1]">
+                  {showAll ? "Thu gọn" : `Xem tất cả ${hos.length} phiếu`}
+                </button>
+              )}
+            </>
           )}
-        </TabsContent>
-        <TabsContent value="counts" className="pt-2">
-          <SimpleTable head={["Lúc · phiên", "Nguyên liệu", "Tồn sổ", "Thực đếm", "Chênh lệch", "%", "Giá trị"]}
-            rows={(counts.data ?? []).map((c) => [`${dateTime(c.cutoff_at)}, ${c.kind} (${c.location === "bep" ? "Bếp" : "Kho"}), ${c.counted_by}`, c.ingredient, qty(c.book_qty, c.unit), qty(c.counted_qty, c.unit), signedQty(c.variance_qty, c.unit), pct(c.variance_pct), money(c.variance_value)])} />
-        </TabsContent>
-        <TabsContent value="receipts" className="pt-2">
-          <SimpleTable head={["Phiếu", "Nguyên liệu", "Đặt", "Nhận", "Đơn giá", "Giá / đv cơ sở"]}
-            rows={(receipts.data ?? []).map((r) => [`${r.code}, ${r.supplier}, ${dateTime(r.received_at)}`, r.ingredient, `${Number(r.ordered_qty)} ${r.unit}`, `${Number(r.received_qty)} ${r.unit}`, money(r.unit_price), `${money(r.unit_cost_base)}/${unit(r.base_unit)}`])} />
-        </TabsContent>
-        <TabsContent value="sales" className="pt-2">
-          <SimpleTable head={["Ngày · ca", "Đã bán", "Hủy trước khi nấu", "Hủy sau khi nấu", "Làm lại", "Hết nguyên liệu"]}
-            rows={(sales.data ?? []).map((s) => [`${dateOnly(s.date)} · ${s.shift}`, s.sold, s.cancel_before_start, s.cancel_after_start, s.remade, s.out_of_stock])} />
-        </TabsContent>
-      </Tabs>
+        </section>
+      </div>
     </div>
   )
 }

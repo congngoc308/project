@@ -49,7 +49,7 @@ def test_ac07_unsigned_handover_does_not_move_stock_and_late_return_alerts(as_us
     assert db.scalar(select(Alert).where(Alert.kind == "handover_unsigned"))
 
     chef._call("POST", f"/handovers/{h['id']}/sign", 200, json={
-        "signer_id": ref["beptruong1"], "pin": "2221", "received": {h["lines"][0]["id"]: 998}})
+        "signer_id": ref["beptruong1"], "pin": "00000", "received": {h["lines"][0]["id"]: 998}})
     assert _book(mgr, ref["BO"]) == (0.0, 1000.0)  # trong dung sai 5 g: chuyển đúng số thủ kho cân xuất
 
     advance(60 * 8)  # quá 14:00 + 30 phút
@@ -69,7 +69,7 @@ def test_ac08_blind_return_and_count_screens(as_user, ref):
     pending = chef.get("/handovers?status=pending")[0]
     assert pending["lines"][0]["issued_qty"] is None
     chef._call("POST", f"/handovers/{h['id']}/sign", 200, json={
-        "signer_id": ref["beptruong1"], "pin": "2221", "received": {h["lines"][0]["id"]: 1000}})
+        "signer_id": ref["beptruong1"], "pin": "00000", "received": {h["lines"][0]["id"]: 1000}})
     shift = current_shift(sk)
 
     form = sk.get(f"/shifts/{shift['id']}/return-form")
@@ -112,7 +112,7 @@ def _shift_with_portions(as_user, ref, portions: int, beef_back: float):
     receive(sk, ref["BO"], 1)
     receive(sk, ref["RAU"], 3, price=30000)
     advance()
-    handover(sk, chef, ref["beptruong1"], "2221", {ref["BO"]: 1000, ref["RAU"]: 3000})
+    handover(sk, chef, ref["beptruong1"], "00000", {ref["BO"]: 1000, ref["RAU"]: 3000})
     advance()
     sell(as_user("phucvu1"), as_user("bep1"), ref["BX_dish"], portions)
     advance(60)
@@ -173,8 +173,8 @@ def test_ac11_reweigh_corrected_on_same_handover_does_not_blame_receipt(as_user,
     advance()
     h = sk.post("/handovers", {"kind": "start", "lines": [{"ingredient_id": ref["BO"], "qty": 1000}]})
     line = h["lines"][0]["id"]
-    chef._call("POST", f"/handovers/{h['id']}/sign", 409, json={"signer_id": ref["beptruong1"], "pin": "2221", "received": {line: 980}})
-    chef._call("POST", f"/handovers/{h['id']}/sign", 200, json={"signer_id": ref["beptruong1"], "pin": "2221", "received": {line: 1000}})
+    chef._call("POST", f"/handovers/{h['id']}/sign", 409, json={"signer_id": ref["beptruong1"], "pin": "00000", "received": {line: 980}})
+    chef._call("POST", f"/handovers/{h['id']}/sign", 200, json={"signer_id": ref["beptruong1"], "pin": "00000", "received": {line: 1000}})
     advance()
     sell(as_user("phucvu1"), as_user("bep1"), ref["BX_dish"], 5)
     advance(60)

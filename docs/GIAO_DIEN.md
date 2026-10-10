@@ -55,13 +55,16 @@ Taste Skill yêu cầu dùng ảnh thật thay cho hình vẽ bằng div. Các �
 
 | File | Dùng ở | Tác giả | Giấy phép | Nguồn |
 |---|---|---|---|---|
-| `bep-lua.webp` | Màn đăng nhập (đã cắt bỏ phần áo có logo) | romainguy | CC BY-SA 2.0 | [Wok cooking and fire](https://commons.wikimedia.org/wiki/File:Wok_cooking_and_fire_by_romainguy.jpg) |
+| `bep-lua.webp` | Màn đăng nhập, khối cuối landing page (đã cắt bỏ phần áo có logo) | romainguy | CC BY-SA 2.0 | [Wok cooking and fire](https://commons.wikimedia.org/wiki/File:Wok_cooking_and_fire_by_romainguy.jpg) |
 | `mon-PB.webp` | Phở bò | Kritzolina | CC BY-SA 4.0 | [Phở bò in a German restaurant 02](https://commons.wikimedia.org/wiki/File:Ph%E1%BB%9F_b%C3%B2_in_a_German_restaurant_02.jpg) |
 | `mon-BX.webp` | Bò xào | jules | CC BY 2.0 | [Ginger beef stir fry](https://commons.wikimedia.org/wiki/File:Ginger_beef_stir_fry.jpg) |
 | `mon-CC.webp` | Cơm chiên bò | Fumikas Sagisavas | CC0 | [Cumin beef fried rice](https://commons.wikimedia.org/wiki/File:Cumin_beef_fried_rice.jpg) |
 | `mon-RX.webp` | Rau cải xào tỏi (ảnh rau muống xào tỏi) | Andy Li | CC0 | [Morning Glory - Pho](https://commons.wikimedia.org/wiki/File:Morning_Glory_-_Pho_2025-07-25.jpg) |
 | `mon-TX.webp` | Tôm xào | Jiaqian AirplaneFan | CC BY 3.0 | [Stir-fried shrimp with garlic and vinegar](https://commons.wikimedia.org/wiki/File:Stir-fried_shrimp_with_garlic_and_vinegar_-_panoramio.jpg) |
 | `mon-GR.webp` | Gà rang | PattayaPatrol | CC BY-SA 4.0 | [Crispy stir-fried chicken in chili-garlic sauce](https://commons.wikimedia.org/wiki/File:DSC_9654_Crispy_stir-fried_chicken_tossed_in_a_spicy_chili-garlic_sauce_with_scallions_and_dried_red_chilies.jpg) |
+| `landing/bep-dem.webp` | Landing page, phần mở đầu | Takeaway | CC BY-SA 3.0 | [Chiang Mai restaurant kitchen](https://commons.wikimedia.org/wiki/File:Chiang_Mai_restaurant_kitchen.JPG) |
+| `landing/bo-thai.webp` | Landing page, bước "Nhập kho" | J. Samuel Burner | CC BY 2.0 | [Raw beef slices](https://commons.wikimedia.org/wiki/File:Raw_beef_slices.jpg) |
+| `landing/can-bep.webp` | Landing page, "Cân trả" và ô "Đếm mù" (đã cắt khung) | Jacek Halicki | CC BY-SA 4.0 | [2023 Elektroniczna waga kuchenna](https://commons.wikimedia.org/wiki/File:2023_Elektroniczna_waga_kuchenna.jpg) |
 
 Ảnh được ánh xạ theo **mã món** trong `src/lib/photos.ts`. Món mới chưa có ảnh sẽ hiện icon dao nĩa.
 
@@ -69,11 +72,15 @@ Taste Skill yêu cầu dùng ảnh thật thay cho hình vẽ bằng div. Các �
 
 | Vai trò | Màn đầu tiên | Điểm nhấn |
 |---|---|---|
-| Tất cả | Đăng nhập | Ảnh bếp lửa thật bên trái; bên phải mỗi lúc chỉ hiện một bước (chọn người, rồi nhập PIN); dòng vai trò được xuống dòng, không cắt chữ |
-| Phục vụ | Đặt món | Ô món có ảnh, món đang khóa chuyển ảnh đen trắng kèm lý do; giỏ món có ảnh thu nhỏ, mép nét đứt như hóa đơn |
-| Bếp / bếp trưởng | Danh sách món | Thẻ món kiểu phiếu bếp: đầu phiếu, đường đục lỗ, số lượng nổi bật; phiếu đang nấu có đầu màu paprika; phiếu mới tới nháy viền hai lần |
-| Thủ kho | Việc hôm nay | Dòng thời gian 4 bước nối bằng đường dọc; thẻ "Nên làm tiếp" màu than |
-| Quản lý | Tổng quan | Sidebar sáng, mục đang chọn nổi lên; ô số liệu chính nền than chữ paprika; dải "Cần xử lý ngay" nổi lên khi rê chuột |
+| Tất cả | Đăng nhập | Ảnh bếp lửa thật bên trái; bên phải mỗi lúc chỉ hiện một bước (chọn người, rồi nhập PIN) và focus chuyển về tiêu đề bước mới. Thẻ người chỉ ghi vai trò thêm (bếp trưởng ca, kiêm nhiệm). PIN cố định 5 số trong khối `surface`: đủ 5 số là tự gửi (không có phím **Vào**), gõ được bằng bàn phím (số, Backspace, Esc), sai PIN thì ô PIN lắc một lần kèm dòng báo lỗi. Nút "Quản lý dùng mật khẩu" nằm cạnh tiêu đề; form mật khẩu có nút hiện/ẩn |
+| Phục vụ | Đặt món | Ô món có ảnh, món đang khóa chuyển ảnh đen trắng kèm lý do; giỏ món có ảnh thu nhỏ, mép nét đứt như hóa đơn. Bếp bấm "Xong" thì máy phục vụ kêu chuông và hiện thông báo (gộp theo bàn trong 1,5 giây); tab "Bàn & báo khách" đếm cả món chờ bưng; khối "Món đã xong, mang ra bàn" gộp theo bàn, bấm "Đã bưng" từng món hoặc cả bàn, chờ quá 5 phút thì viền hồng kèm icon cảnh báo |
+| Bếp / bếp trưởng | Danh sách món | Theo thiết kế "Nhan vien Bep v4" (Claude Design), code ở `layouts/KitchenBits.tsx`. Thanh bên trắng 264px: tab lớn, số việc chờ gắn ở góc icon (nảy lên khi đổi số), bếp trưởng có avatar cam và huy hiệu "Bếp trưởng ca", đồng hồ to, ca hiện tại, âm báo bật/tắt, đổi người. Bảng 3 cột Chờ nấu (xanh) / Đang nấu (cam) / Vừa ra món (xanh lá) kèm món hết nguyên liệu. Phiếu bếp: đầu phiếu màu theo trạng thái (trễ quá 20 phút thì đỏ, viền đập), đường đục lỗ, ảnh món, số lượng nền than. Phiếu đổi cột trượt kiểu FLIP; món mới nháy viền, có chuông và thông báo nền than góc phải dưới. Hủy / làm lại món đang nấu: một hộp thoại hai bước, bước 2 là bàn phím PIN của bếp trưởng ca. Bếp trưởng ca: hai thẻ việc trên bảng món (ký bàn giao, duyệt hao hụt), nút "Bán lại" trên món đang khóa, màn Nhận bàn giao (chọn phiếu, tự cân lại từng dòng bằng bàn phím số, ký PIN của chính mình trong hộp thoại), khối "Chờ bạn duyệt" đầu màn hao hụt với hộp thoại từ chối có lý do. Màn hao hụt: 4 bước đánh số, bàn phím số dính bên phải. Huy hiệu số và "Bếp trưởng ca" dùng nền `#9a3412` (chữ trắng 7,3 : 1) thay cho `#c2410c` của bản thiết kế. Chữ đỏ nhỏ dùng `#991b1b`, nhãn "Đã duyệt" / "Từ chối" dùng chữ đậm hơn bản thiết kế để giữ mức 7 : 1 |
+| Thủ kho | Việc hôm nay | Theo thiết kế "Thu Kho v2" (Claude Design), xem mục riêng bên dưới |
+| Quản lý | Tổng quan | Theo thiết kế "Quan Ly Admin" (Claude Design, 4 file: khung + Kiểm soát, Kho & định mức, Hệ thống). Thành phần chung ở `layouts/AdminBits.tsx`. Thanh bên tối thu gọn được (lưu theo máy), ô sáng trượt theo mục đang chọn, số việc ở Phiếu điều tra / Cảnh báo. Thanh trên: đường dẫn, ca, đồng hồ, bảng lệnh Ctrl K (tìm màn, phiếu, thao tác, không phân biệt dấu), chuông. Phiếu điều tra mở chi tiết trong ngăn trượt phải (đường dẫn `/quan-ly/dieu-tra/:id`), phân bổ nguyên nhân rồi kết luận. Mã phiếu dùng JetBrains Mono. Chữ nhỏ nhất 14px (thiết kế dùng 13px cho nhãn) |
+
+## Co giãn theo màn hình
+
+Ở zoom trình duyệt 100%, mọi màn của mọi vai trò được co giãn theo bề rộng cửa sổ, lấy khung 1440px của bản thiết kế làm chuẩn (`lib/fitZoom.ts`): 1280px ra 0,89, 1366px ra 0,95, 1536px ra 1,07, 1920px ra 1,33 (giới hạn 0,85 đến 1,35; dưới 1024px để bố cục responsive tự lo). Người dùng tự zoom (Ctrl +) vẫn phóng to được vì mức zoom trang được tính riêng. Đánh đổi: ở cửa sổ hẹp (zoom dưới 1) chữ 14px hiển thị nhỏ hơn 14px một chút.
 
 ## Quy tắc giữ khi sửa tiếp
 
@@ -97,3 +104,105 @@ Taste Skill yêu cầu dùng ảnh thật thay cho hình vẽ bằng div. Các �
 1. Flat Design + Minimalism & Swiss (skill UI UX Pro Max, nhóm "Inventory & Stock Management"): nền slate, màu nhấn xanh lục.
 2. Accessible & Ethical + Minimalism (demo "Medical Clinic Portal" của UI UX Pro Max): nâng tương phản lên 7 : 1, cỡ chữ, ô bấm, focus. Các mốc này được giữ nguyên ở bản hiện tại.
 3. Taste Skill (bản hiện tại): đổi ngôn ngữ hình ảnh, giữ nguyên chức năng và mốc truy cập.
+
+## Giao diện riêng của phục vụ bàn ("ban đêm")
+
+Hai màn **Đặt món** và **Bàn & báo khách** dùng thiết kế "Phục Vụ" trên Claude Design. Giao diện này khác các vai trò còn lại:
+- **Màu:** nền tím than `#140E1F`, cam san hô `#FF5A3C`, vàng `#FFD84D`, kem `#FFF6EC`, hồng `#FF4F9A`.
+- **Font:** Bricolage Grotesque cho tiêu đề, Be Vietnam Pro cho chữ thường.
+
+| Phần | Cách làm |
+|---|---|
+| Bật / tắt | Lớp `night` gắn lên `<html>` khi đường dẫn là `/van-hanh/dat-mon` hoặc `/van-hanh/ban` (`layouts/NightBits.tsx`, `TabletLayout.tsx`). Rời khỏi hai màn này là về giao diện sáng. Hộp thoại và thông báo cũng đổi màu theo. |
+| Token | `html.night` trong `src/index.css` ghi đè bộ màu chung, thêm `--coral`, `--lime`, `--pink`, `--cream`, `--night*`. |
+| Khung | Dải chữ chạy báo giờ demo; logo nghiêng; viên trạng thái ca; đồng hồ nhấp nháy dấu hai chấm; thẻ người dùng; tab dạng viên thuốc có nền trượt (≤ 3 tab). |
+| Đặt món | Bàn vẽ có 4 ghế, "Mang đi" có hình túi, bàn đang có đơn có chấm nhấp nháy. Ô món có ảnh và giá; món hết có con dấu xoay, chạm vào thì rung và báo lý do. Ảnh món bay vào giỏ. Giỏ là tờ hóa đơn kem với mã bàn lớn. **Mỗi bàn có giỏ nháp riêng.** Gửi bếp có pháo giấy. |
+| Bàn & báo khách | Món hết nguyên liệu có ảnh, nút "Đổi món" / "Khách hủy". Mỗi bàn có thanh tiến độ (số món bếp đã xong) và chip trạng thái: Chờ bếp, Đang nấu, Bếp đã xong, Hết nguyên liệu, Đã hủy, Làm lại. |
+
+**Khác với bản thiết kế:**
+- **Nút "Mang ra" và trạng thái "Đã mang ra" không làm.** Hệ thống chưa lưu bước này; nếu chỉ giả lập trên một máy thì sẽ gây hiểu nhầm.
+- **Món bếp làm xong** hiện "Bếp đã xong".
+- **Huy hiệu trên tab "Bàn & báo khách"** đếm số món hết nguyên liệu cần báo khách.
+- **Chưa chọn bàn thì không tự chọn B1:** giỏ ghi "Chưa chọn", tránh gửi nhầm bàn.
+
+**Tương phản:**
+- Chữ nhỏ đạt 7 : 1.
+- Chữ trên nền cam / hồng luôn là chữ lớn đậm, đạt mức AAA cho chữ lớn.
+- Axe-core trên hai màn: 0 vi phạm.
+- Hiệu ứng chuyển động tắt khi máy bật "giảm chuyển động".
+
+## Giao diện riêng của thủ kho ("Thu Kho v2")
+
+Sáu màn của thủ kho dùng thiết kế "Thu Kho v2" trên Claude Design: **Hôm nay**, **Nhập hàng**, **Bàn giao**, **Cân trả cuối ca**, **Kiểm kê**, **Hao hụt**. Code nằm ở `layouts/StoreBits.tsx` (khung), `components/ScaleWeigh.tsx` (màn cân) và `pages/store/`.
+
+| Phần | Cách làm |
+|---|---|
+| Bật / tắt | `TabletLayout.tsx` dùng `StoreShell` khi đường dẫn nằm trong `STORE_ROUTES`. Màn **Hao hụt** chỉ dùng giao diện này khi người dùng là thủ kho và không làm bếp; bếp, bếp trưởng và quản lý vẫn dùng màn hao hụt của bếp. |
+| Khung | Thanh bên 268px, nền viên than trượt theo mục đang chọn, số việc chờ trên từng mục (cân trả quá giờ có nền đỏ). Thẻ đồng hồ có giây, ca hiện tại, trạng thái ca, thanh tiến độ của ca. Màn hẹp chuyển sang dải tab ngang. Quản lý có thêm link "Màn quản lý". |
+| Hôm nay | Lời chào theo buổi, thẻ than "Nên làm tiếp" có vòng "x/4 việc xong", dải "Nhịp ngày" 06:00 đến 22:00 có mốc "Bây giờ", 4 bước trong ngày, "Hoạt động gần đây" gộp phiếu nhập, bàn giao đã ký, kiểm kê đã chốt, hao hụt tại Kho. |
+| Màn cân (dùng chung) | Mỗi nguyên liệu một dòng, dòng đang nhập nổi viền than; bên phải có ô số "SỐ ĐANG NHẬP" nền than và bàn phím số dính. Gõ được bằng bàn phím: số, dấu phẩy, Backspace, Enter hoặc mũi tên để đổi dòng. |
+| Bàn giao | Ba bước: thủ kho cân xuất, thẻ than "Đưa máy cho bếp trưởng", bếp trưởng cân lại (không thấy số thủ kho) và ký PIN. Lệch quá dung sai thì hiện danh sách dòng lệch. |
+| Cân trả, kiểm kê | Cân / đếm mù, hỏi xác nhận trước khi chốt, sau khi chốt hiện thẻ hoàn tất. |
+| Hao hụt | Chip lý do: Hết hạn, Hỏng do bảo quản, Đổ vỡ / rơi, Côn trùng / chuột (ghi vào loại "Khác" kèm lý do). Ghi nhiều nguyên liệu một lần, mỗi dòng là một phiếu. Bên dưới là các phiếu gần đây kèm trạng thái duyệt. |
+
+**Khác với bản thiết kế:**
+- **Không có nút "Đọc cân".** Máy chưa nối với cân điện tử; nếu nút này sinh số giả thì số liệu sẽ sai.
+- **Giữ form tạo phiếu nhập mới** và nút **hủy phiếu bàn giao** để cân xuất lại. Bản thiết kế không có hai chức năng này.
+- **Hao hụt trừ tồn Kho ngay.** Màn ghi rõ là bếp trưởng duyệt sau, phiếu vượt hạn mức thì quản lý duyệt.
+- Chữ xám nhỏ dùng `#4f4a45` (đạt 7 : 1) thay cho `#6b645f` của bản thiết kế.
+
+**Kiểm định:**
+- Axe-core trên 6 màn: 0 vi phạm.
+- Đã chạy trọn luồng trên bản sao DB, không có lỗi trang: nhập hàng, bàn giao, bếp trưởng ký PIN, cân trả đóng ca, kiểm kê nhóm A, ghi hao hụt.
+
+## Landing page (`/gioi-thieu`)
+
+Trang giới thiệu hệ thống, làm theo skill **design-taste-frontend** của Taste Skill. Trang không cần đăng nhập. Code nằm trong `src/pages/landing/`, thư viện chuyển động là `motion` (bản 13.4.4). Trang được tải riêng (lazy), nên app vận hành không nặng thêm.
+
+**Cách đọc đề bài:** landing sản phẩm cho chủ quán và hội đồng chấm đồ án. Giữ thương hiệu của app: paprika trên nền đá ấm, Bricolage Grotesque cho tiêu đề, Plus Jakarta Sans cho chữ thường. Ba thông số: DESIGN_VARIANCE 8, MOTION_INTENSITY 7, VISUAL_DENSITY 4.
+
+| Khối | Cách làm |
+|---|---|
+| Mở đầu | Chữ trái, ảnh phải. Tiêu đề 2 dòng trượt lên khi tải trang. Ảnh bếp thật nằm dưới ảnh chụp báo cáo AvT; khi cuộn, ảnh báo cáo trôi nhanh hơn ảnh bếp. |
+| Xây bằng | Dải logo công nghệ chạy ngang (lấy từ Simple Icons), tô theo màu chữ. Đây là dải chạy ngang duy nhất của trang. |
+| Hành trình của 1 kg thịt bò | Đúng kịch bản AC-11. Trên màn rộng, phần này ghim lại, cuộn dọc kéo 5 bước trượt ngang. Hai số "Sổ nói" và "Cân nói" đổi theo từng bước. Màn hẹp hoặc máy bật giảm chuyển động thì các bước xếp dọc. |
+| Câu nguyên tắc | Chữ lớn sáng dần theo nhịp cuộn. Chữ chưa sáng vẫn đạt 4,8 : 1. |
+| Tính năng | Lưới 5 ô cho 5 tính năng: đếm mù (ảnh cân), sổ chỉ ghi thêm, bàn phím PIN bấm thử được, ngưỡng hai tầng (số mặc định của nhóm A), phiếu điều tra (ảnh màn thật). |
+| Vai trò | Dải ảnh chụp màn hình thật của 4 nhóm vai trò. Bấm vào dải nào thì dải đó mở rộng, phần mô tả hiện bên dưới. Màn hẹp hiện thành thẻ. |
+| Chạy thử | Hai lệnh Docker trong README và 4 con số có thật của dự án. |
+| Khối cuối | Ảnh chảo lửa, nút "Vào hệ thống" và "Xem mã nguồn". |
+
+**Theo quy tắc của Taste Skill:**
+- Không có dấu gạch dài.
+- Không có nhãn nhỏ viết hoa trên đầu mục.
+- Không dựng giao diện giả bằng div: mọi ảnh sản phẩm đều chụp từ chính hệ thống. Riêng ảnh màn bếp dùng phiếu món mẫu, vì DB demo lúc chụp không có món nào đang chờ.
+
+**Chế độ màu và co giãn:**
+- Luôn nền sáng, kể cả khi máy đặt chế độ tối (đã bỏ bản nền tối theo yêu cầu).
+- Trang không bị co giãn theo khung 1440px (`useFitZoom` bỏ qua khi `<html>` có lớp `landing`), vì phần ghim tính theo `100dvh`.
+
+**Kiểm định:**
+- Axe-core trên 4 trường hợp (máy đặt nền sáng, máy đặt nền tối, màn 390px, giảm chuyển động): 0 vi phạm.
+- Ảnh 3 màn quản lý (tổng quan, báo cáo AvT, phiếu điều tra) chụp lại theo giao diện admin mới. Muốn chụp lại lần nữa: đăng nhập `quanly`, khung 1440 × 900, tỉ lệ điểm ảnh 1,5, ẩn dải giờ demo, rồi lưu WebP 1600px vào `public/img/landing/man-quanly-*.webp`.
+- Màn 390px không có cuộn ngang.
+
+### Di chuyển giữa trang giới thiệu và màn đăng nhập
+
+| Tình huống | Cách làm |
+|---|---|
+| Bấm "Vào hệ thống" | Trang giới thiệu lùi lại và mờ đi, màn đăng nhập trượt vào. Logo bay từ thanh điều hướng sang góc ảnh. Bấm từ khối cuối thì ảnh chảo lửa nở thành nửa trái màn đăng nhập (hai nơi dùng cùng một ảnh). |
+| Rê chuột hoặc focus vào nút | Tải sẵn danh sách nhân viên, nên màn đăng nhập hiện tên ngay, không qua khung chờ. |
+| "Vào hệ thống với vai trò…" (mục Vai trò) | Mở `/dang-nhap?nhom=server|kitchen|storekeeper|manager`. Nhóm đó lên đầu, có nền paprika nhạt và nhãn "Vai trò bạn chọn". |
+| Đã đăng nhập | Các nút đổi thành "Tiếp tục làm việc" và vào thẳng màn làm việc. Link theo vai trò bị ẩn. |
+| "Trang giới thiệu" (góc ảnh màn đăng nhập) | Vừa đi từ trang giới thiệu sang thì lùi lịch sử, trang mở lại đúng chỗ đang đọc. Mở thẳng màn đăng nhập (máy tính bảng) thì trang giới thiệu mở từ đầu. Hiệu ứng trượt theo chiều ngược lại. |
+| Nút Back của trình duyệt | Về đúng chỗ đang đọc. Vị trí cuộn lưu trong `sessionStorage`. |
+| Bấm Ctrl hoặc chuột giữa | Mở tab mới như link thường (mọi đường chuyển trang đều là thẻ `<a>` thật). |
+| Máy bật giảm chuyển động, hoặc trình duyệt chưa hỗ trợ View Transitions | Chuyển trang ngay, không có hiệu ứng. |
+
+**Code:** `src/lib/pageTransition.ts`, CSS `::view-transition-*` ở cuối `index.css`.
+
+- BrowserRouter đổi route trong `startTransition`, nên không flush đồng bộ được. Vì vậy hàm chuyển trang chờ trang đích gắn `data-page` vào DOM rồi mới chụp trạng thái mới.
+- Trong lúc chờ, trình duyệt tạm dừng vẽ, nên không dùng `requestAnimationFrame`.
+- Zoom của app được tính lại ngay bằng `refitZoom()` để không bị giật sau hiệu ứng.
+
+`/` vẫn mở thẳng màn đăng nhập cho máy tính bảng của nhân viên. Trang giới thiệu dành cho người xem lần đầu.

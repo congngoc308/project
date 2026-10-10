@@ -190,6 +190,24 @@ def server_notifications(db: Session = Depends(get_db), _: User = Depends(curren
     return [orders.item_dict(db, oi) for oi in items]
 
 
+@router.get("/server/ready")
+def server_ready(db: Session = Depends(get_db), _: User = Depends(current_user)):
+    """Món đã xong, chờ phục vụ mang ra bàn."""
+    return orders.ready_to_serve(db)
+
+
+class ServedIn(BaseModel):
+    item_ids: list[int]
+
+
+@router.post("/order-items/served")
+def mark_served(body: ServedIn, db: Session = Depends(get_db), actor: User = Depends(server)):
+    items = [get_or_404(db, OrderItem, i, "Món") for i in dict.fromkeys(body.item_ids)]
+    orders.serve_items(db, actor, items)
+    db.commit()
+    return [orders.item_dict(db, oi) for oi in items]
+
+
 @router.get("/time")
 def time_now():
     return {"now": clock.now(), "offset": clock.offset_seconds()}

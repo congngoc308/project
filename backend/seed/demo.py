@@ -37,13 +37,19 @@ from app.services import (
     shifts,
     waste,
 )
-from seed.base import seed_reference
+from seed.base import DEMO_PIN, seed_reference
 
 R = random.Random(42)
 DAYS = int(sys.argv[1]) if len(sys.argv) > 1 else 30
 MIX = [("BX", 0.25), ("PB", 0.22), ("GR", 0.16), ("TX", 0.1), ("RX", 0.12), ("CC", 0.15)]
 TABLES = [f"B{i}" for i in range(1, 13)] + ["Mang đi"]
-PINS = {"beptruong1": "2221", "beptruong2": "2222"}
+def served(oi: OrderItem, by: User) -> None:
+    """Dữ liệu lịch sử: phục vụ bưng món 2 phút sau khi bếp hoàn tất (không dùng R để giữ nguyên chuỗi ngẫu nhiên)."""
+    oi.served_at = oi.done_at + timedelta(minutes=2)
+    oi.served_by = by.id
+
+
+PINS = {"beptruong1": DEMO_PIN, "beptruong2": DEMO_PIN}
 TARGET_A = {"BO": 2.0, "GA": 2.6, "TOM": 1.2, "RAU": 3.8}  # kg tồn Kho mong muốn sau khi nhập buổi sáng
 # Tồn Kho mong muốn sau khi nhập đầu tuần (số đơn vị mua), đơn vị mua, đơn giá
 WEEKLY_C = {"TOI": (2, "kg", 60000), "OT": (0.5, "kg", 80000), "DAU": (6, "chai", 45000),
@@ -183,7 +189,8 @@ def run_shift(c: Ctx, day: date, morning: bool, chef: User, offset: int, special
     server = c.u["phucvu1" if morning else "phucvu2"]
     cooks = [c.u["bep1"], c.u["bep2"]] if morning else [c.u["bep3"], c.u["bep2"]]
     if special.get("sod"):
-        cooks = [c.u["kiemnhiem"]]
+        # Kiêm nhiệm: quản lý vừa nấu phụ vừa tự cân trả ca này (hệ thống cho phép nhưng đánh dấu ca).
+        cooks = [c.u["quanly"]]
     n_orders = R.randint(14, 22)
     times = sorted(R.uniform(10, 440) for _ in range(n_orders))
     events = []
@@ -222,6 +229,7 @@ def run_shift(c: Ctx, day: date, morning: bool, chef: User, offset: int, special
                 orders.remake_item(db, oi_actor(c, cooks), oi, "Món bị mặn, làm lại", chef.id, PINS[chef.username])
             else:
                 orders.complete_item(db, R.choice(cooks), oi)
+                served(oi, server)
         db.commit()
     # Hoàn tất các món làm lại còn chờ
     for oi in db.scalars(select(OrderItem).where(OrderItem.status == d.ITEM_WAITING, OrderItem.remake_of_id.is_not(None))):
@@ -232,6 +240,7 @@ def run_shift(c: Ctx, day: date, morning: bool, chef: User, offset: int, special
         supplement_if_needed(c, chef, code, oi.qty)
         orders.start_item(db, R.choice(cooks), oi)
         orders.complete_item(db, R.choice(cooks), oi)
+        served(oi, c.u["phucvu1"])
     if R.random() < 0.35:
         code = R.choice(["BO", "GA", "RAU", "TOM"])
         wt, reason = R.choice([("do_vo_roi", "Rơi khi sơ chế"), ("hong_so_che", "Sơ chế hỏng phần gân"),
@@ -254,7 +263,7 @@ def run_shift(c: Ctx, day: date, morning: bool, chef: User, offset: int, special
             noise += theo * Decimal("0.022")
         noise += Decimal(special.get("loss", {}).get(ing.code, 0))
         counts_in[ing.id] = max(Decimal(0), (book - noise).quantize(Decimal(1)))
-    returner = c.u["kiemnhiem"] if special.get("sod") else c.u["thukho1"]
+    returner = c.u["quanly"] if special.get("sod") else c.u["thukho1"]
     counts.submit_return(db, returner, shift, counts_in)
     db.commit()
     return shift

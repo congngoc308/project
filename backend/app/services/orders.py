@@ -143,8 +143,40 @@ def complete_item(db: Session, actor: User, oi: OrderItem) -> OrderItem:
     audit(db, actor.id, "order_item.done", "order_item", oi.id)
     _maybe_close_order(db, oi.order_id)
     events.emit(db, events.KITCHEN, "item", {"id": oi.id, "status": oi.status})
-    events.emit(db, events.SERVER, "item", {"id": oi.id, "status": oi.status, "order_id": oi.order_id})
+    order = db.get(Order, oi.order_id)
+    events.emit(db, events.SERVER, "item", {"id": oi.id, "status": oi.status, "order_id": oi.order_id,
+                                            "table": order.table_label, "dish": db.get(MenuItem, oi.menu_item_id).name, "qty": oi.qty})
     return oi
+
+
+def serve_items(db: Session, actor: User, items: list[OrderItem]) -> list[OrderItem]:
+    """Phục vụ xác nhận đã mang món ra bàn. Chỉ món đã hoàn tất, chưa bưng; không tác động kho."""
+    if not items:
+        raise Invalid("Chưa chọn món")
+    for oi in items:
+        if oi.status != d.ITEM_DONE:
+            raise Conflict("Món chưa hoàn tất, chưa bưng được")
+        if oi.served_at is not None:
+            raise Conflict("Món đã được bưng ra rồi")
+    now = clock.now()
+    for oi in items:
+        oi.served_at = now
+        oi.served_by = actor.id
+        audit(db, actor.id, "order_item.served", "order_item", oi.id)
+    ids = [oi.id for oi in items]
+    events.emit(db, events.KITCHEN, "item", {"ids": ids, "served": True})
+    events.emit(db, events.SERVER, "item", {"ids": ids, "served": True})
+    return items
+
+
+def ready_to_serve(db: Session) -> list[dict]:
+    """Món bếp đã hoàn tất nhưng phục vụ chưa bưng, cũ nhất trước."""
+    stmt = (
+        select(OrderItem).options(selectinload(OrderItem.order))
+        .where(OrderItem.status == d.ITEM_DONE, OrderItem.served_at.is_(None))
+        .order_by(OrderItem.done_at, OrderItem.id)
+    )
+    return [item_dict(db, oi) for oi in db.scalars(stmt)]
 
 
 def _maybe_close_order(db: Session, order_id: int) -> None:
@@ -242,8 +274,40 @@ def cancel_item(
           after={"status": oi.status, "reason": reason, "used_mode": used_mode, "used": used})
     _maybe_close_order(db, oi.order_id)
     events.emit(db, events.KITCHEN, "item", {"id": oi.id, "status": oi.status})
-    events.emit(db, events.SERVER, "item", {"id": oi.id, "status": oi.status, "order_id": oi.order_id})
+    order = db.get(Order, oi.order_id)
+    events.emit(db, events.SERVER, "item", {"id": oi.id, "status": oi.status, "order_id": oi.order_id,
+                                            "table": order.table_label, "dish": db.get(MenuItem, oi.menu_item_id).name, "qty": oi.qty})
     return oi
+
+
+def serve_items(db: Session, actor: User, items: list[OrderItem]) -> list[OrderItem]:
+    """Phục vụ xác nhận đã mang món ra bàn. Chỉ món đã hoàn tất, chưa bưng; không tác động kho."""
+    if not items:
+        raise Invalid("Chưa chọn món")
+    for oi in items:
+        if oi.status != d.ITEM_DONE:
+            raise Conflict("Món chưa hoàn tất, chưa bưng được")
+        if oi.served_at is not None:
+            raise Conflict("Món đã được bưng ra rồi")
+    now = clock.now()
+    for oi in items:
+        oi.served_at = now
+        oi.served_by = actor.id
+        audit(db, actor.id, "order_item.served", "order_item", oi.id)
+    ids = [oi.id for oi in items]
+    events.emit(db, events.KITCHEN, "item", {"ids": ids, "served": True})
+    events.emit(db, events.SERVER, "item", {"ids": ids, "served": True})
+    return items
+
+
+def ready_to_serve(db: Session) -> list[dict]:
+    """Món bếp đã hoàn tất nhưng phục vụ chưa bưng, cũ nhất trước."""
+    stmt = (
+        select(OrderItem).options(selectinload(OrderItem.order))
+        .where(OrderItem.status == d.ITEM_DONE, OrderItem.served_at.is_(None))
+        .order_by(OrderItem.done_at, OrderItem.id)
+    )
+    return [item_dict(db, oi) for oi in db.scalars(stmt)]
 
 
 def remake_item(db: Session, actor: User, oi: OrderItem, reason: str, chef_id: int | None, chef_pin: str | None) -> OrderItem:
@@ -311,6 +375,7 @@ def item_dict(db: Session, oi: OrderItem) -> dict:
         "end_reason": oi.end_reason,
         "remake_of_id": oi.remake_of_id,
         "confirmed_at": oi.order.confirmed_at,
+        "served_at": oi.served_at,
     }
 
 

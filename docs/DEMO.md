@@ -28,18 +28,18 @@ Khoảng 15–20 phút, bám theo các tiêu chí nghiệm thu AC-01 → AC-18 c
 | Thịt bò ca chiều, 6 ngày trước | **Thất thoát trong ca** | Hao hụt ghi muộn, gắn với ca và bếp trưởng |
 | Tôm, 3 ngày trước | **Báo hết nhầm** | Kiểm kê xác nhận tìm thấy hàng; phần còn lại kết luận "quá tay" |
 
-**Ca & bàn giao**: ca sáng 25 ngày trước bị đánh dấu **Kiêm nhiệm**. Lý Văn Sơn vừa nấu vừa cân trả, nên ca này "không đảm bảo phân tách nhiệm vụ".
+**Ca & bàn giao**: ca sáng 25 ngày trước bị đánh dấu **Kiêm nhiệm**. Quản lý Lê Minh Quân vừa nấu phụ vừa tự cân trả, nên ca này "không đảm bảo phân tách nhiệm vụ".
 
 ## 2. Kịch bản chính: "1 kg bò, mới 5 bát đã hết" (AC-01, 02, 06, 07, 08, 11)
 
 | Bước | Ai (PIN) | Thao tác | Điểm cần chỉ ra |
 |---|---|---|---|
-| 1 | Phạm Thị Thu, thủ kho (1111) | **Nhập hàng → Phiếu nhập mới**: Thịt bò 1 kg, đơn giá 250000 → **Lưu phiếu, chờ hàng về** → **Xác nhận đã nhận hàng** | Tồn Kho tăng ngay, đơn giá nhập gần nhất = 250 đ/g (AC-06) |
+| 1 | Phạm Thị Thu, thủ kho (00000) | **Nhập hàng → Phiếu nhập mới**: Thịt bò 1 kg, đơn giá 250000 → **Lưu phiếu, chờ hàng về** → **Xác nhận đã nhận hàng** | Tồn Kho tăng ngay, đơn giá nhập gần nhất = 250 đ/g (AC-06) |
 | 2 | Thủ kho | **Bàn giao → Bàn giao đầu ca**: Thịt bò 1000, Rau cải 1500 → **Tạo phiếu, chuyển bếp trưởng ký** | Màn quản lý: Tổng quan → "Bàn giao đầu ca: Chờ ký". Tồn chưa chuyển sang Bếp (AC-07) |
-| 3 | Nguyễn Văn Bình, bếp trưởng (2221), trên máy của thủ kho | Cân lại: nhập **980** cho thịt bò → Ký bằng PIN | Bị từ chối vì lệch quá dung sai 5 g; lần ký lỗi được lưu làm bằng chứng. Thẻ phiếu không hiện số thủ kho cân xuất |
-| 4 | Bếp trưởng | Sửa thành **1000** → ký PIN 2221 | Ca sáng chuyển "đang mở", gắn với Nguyễn Văn Bình |
-| 5 | Đặng Thu Trang, phục vụ (4441) | **Đặt món**: bàn B3, Bò xào × 5 → **Gửi bếp** | Món hiện ngay trên danh sách của bếp theo thứ tự xác nhận (SSE, AC-01) |
-| 6 | Hoàng Văn Nam, bếp (3331) | **Bắt đầu nấu** rồi **Xong, ra món** | Trừ kho khi bắt đầu, hoàn tất không trừ thêm (AC-02). Sổ giao dịch kho: tiêu hao 100 g bò |
+| 3 | Nguyễn Văn Bình, bếp trưởng (00000), trên máy của thủ kho | Cân lại: nhập **980** cho thịt bò → Ký bằng PIN | Bị từ chối vì lệch quá dung sai 5 g; lần ký lỗi được lưu làm bằng chứng. Thẻ phiếu không hiện số thủ kho cân xuất |
+| 4 | Bếp trưởng | Sửa thành **1000** → ký PIN 00000 | Ca sáng chuyển "đang mở", gắn với Nguyễn Văn Bình |
+| 5 | Đặng Thu Trang, phục vụ (00000) | **Đặt món**: bàn B3, Bò xào × 5 → **Gửi bếp** | Món hiện ngay trên danh sách của bếp theo thứ tự xác nhận (SSE, AC-01) |
+| 6 | Hoàng Văn Nam, bếp (00000) | **Bắt đầu nấu** rồi **Xong, ra món** | Trừ kho khi bắt đầu, hoàn tất không trừ thêm (AC-02). Sổ giao dịch kho: tiêu hao 100 g bò |
 | 7 | Quản lý | **Đồng hồ demo → Tới quá giờ kết thúc ca** | Cảnh báo "Ca sáng đã kết thúc mà chưa cân trả" (AC-07) |
 | 8 | Thủ kho | **Cân trả cuối ca**: Thịt bò **0**, Rau cải **1350** → **Chốt cân trả & đóng ca** | Màn cân mù: không có tồn sổ (AC-08). Bếp không vào được màn này |
 | 9 | Quản lý | **Tổng quan / Cảnh báo** | "Chênh lệch bắt buộc giải trình: Thịt bò tại Bếp" → **900 g ≈ 225.000 đ**, 900% so với lý thuyết 100 g (AC-11) |

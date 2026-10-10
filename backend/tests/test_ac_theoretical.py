@@ -67,16 +67,16 @@ def test_ac04_cancel_after_start_needs_chef_and_moves_to_waste(as_user, ref, db)
     sv, k = as_user("phucvu1"), as_user("bep1")
     sk, chef = as_user("thukho1"), as_user("beptruong1")
     receive(sk, ref["BO"], 1)
-    handover(sk, chef, ref["beptruong1"], "2221", {ref["BO"]: 1000, ref["RAU"]: 1000})
+    handover(sk, chef, ref["beptruong1"], "00000", {ref["BO"]: 1000, ref["RAU"]: 1000})
     advance()
     a, b = sell(sv, k, ref["BX_dish"], 2)
 
     # Phục vụ không được hủy món đã bắt đầu; bếp phải có bếp trưởng xác nhận bằng PIN.
     sv.post(f"/order-items/{a['id']}/cancel", {"reason": "Khách về"}, expect=403)
     k.post(f"/order-items/{a['id']}/cancel", {"reason": "Khách về"}, expect=400)
-    k.post(f"/order-items/{a['id']}/cancel", {"reason": "Khách về", "chef_id": ref["beptruong1"], "chef_pin": "0000"},
+    k.post(f"/order-items/{a['id']}/cancel", {"reason": "Khách về", "chef_id": ref["beptruong1"], "chef_pin": "99999"},
            expect=401)
-    k.post(f"/order-items/{a['id']}/cancel", {"reason": "Khách về", "chef_id": ref["beptruong1"], "chef_pin": "2221"})
+    k.post(f"/order-items/{a['id']}/cancel", {"reason": "Khách về", "chef_id": ref["beptruong1"], "chef_pin": "00000"})
     db.expire_all()
     rev = _txns(db, ingredient_id=ref["BO"], txn_type="consumption_reversal")
     waste = _txns(db, ingredient_id=ref["BO"], txn_type="waste")
@@ -85,7 +85,7 @@ def test_ac04_cancel_after_start_needs_chef_and_moves_to_waste(as_user, ref, db)
 
     # Khai dùng ít hơn định lượng: phần dư trả lại tồn.
     k.post(f"/order-items/{b['id']}/cancel", {"reason": "Khách hủy sớm", "chef_id": ref["beptruong1"],
-                                              "chef_pin": "2221", "used_mode": "partial", "used": {ref["BO"]: 8}})
+                                              "chef_pin": "00000", "used_mode": "partial", "used": {ref["BO"]: 8}})
     db.expire_all()
     waste = _txns(db, ingredient_id=ref["BO"], txn_type="waste")
     assert float(waste[-1].qty) == -8.0
