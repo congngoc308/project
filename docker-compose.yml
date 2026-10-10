@@ -1,0 +1,60 @@
+name: quanlybep
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: qlb
+      POSTGRES_PASSWORD: qlb
+      POSTGRES_DB: qlb
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "5450:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qlb -d qlb"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Database dành riêng cho pytest, dữ liệu bị xoá sau mỗi test.
+  db-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: qlb
+      POSTGRES_PASSWORD: qlb
+      POSTGRES_DB: qlb_test
+    ports:
+      - "5451:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://qlb:qlb@db:5432/qlb
+      DEMO_MODE: "true"
+      SECRET_KEY: doi-khoa-nay-khi-trien-khai-that-it-nhat-32-ky-tu
+      UPLOAD_DIR: /data/uploads
+      CORS_ORIGINS: http://localhost:5190
+    ports:
+      - "8010:8010"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    environment:
+      API_TARGET: http://api:8010
+    ports:
+      - "5190:5190"
+    depends_on:
+      - api
+
+volumes:
+  db-data:
+  uploads:
