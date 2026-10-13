@@ -12,7 +12,7 @@ import { IMG, Reveal, useEnterLogin } from "@/pages/landing/bits"
  */
 const ROLES: { name: string; group: Role; icon: Icon; img: string; alt: string; title: string; text: string }[] = [
   {
-    name: "Phục vụ", group: "server", icon: ForkKnifeIcon, img: "man-phucvu", alt: "Màn đặt món của phục vụ, nền tím than, ô món có ảnh",
+    name: "Phục vụ", group: "server", icon: ForkKnifeIcon, img: "man-phucvu", alt: "Màn đặt món của phục vụ, nền sáng, ô món có ảnh và giỏ món bàn B3",
     title: "Đặt món theo bàn, biết ngay món nào hết", text: "Món hết nguyên liệu tự khóa kèm lý do. Bếp làm xong thì máy phục vụ kêu chuông.",
   },
   {

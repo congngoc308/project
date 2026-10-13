@@ -36,9 +36,9 @@ Không thể hỏi bếp "còn bao nhiêu" rồi tin con số đó. Vì vậy h�
 | **Thủ kho** | Máy tính bảng | Màn "Việc hôm nay": nhập hàng, bàn giao đầu ca và bổ sung, cân trả cuối ca, kiểm kê. |
 | **Quản lý** | Máy tính | Tổng quan, phiếu điều tra, cảnh báo, báo cáo AvT (xuất Excel), kiểm kê đột xuất, món và công thức, ngưỡng, người dùng, nhật ký, đồng hồ demo. Tìm nhanh mọi màn bằng Ctrl K. |
 
-| Phục vụ: đặt món | Bếp: phiếu món |
+| Phục vụ: đặt món | Bếp: danh sách món |
 |---|---|
-| ![Đặt món](docs/anh/phuc-vu-dat-mon.webp) | ![Phiếu bếp](docs/anh/bep-phieu-mon.webp) |
+| ![Đặt món](docs/anh/phuc-vu-dat-mon.webp) | ![Danh sách món](docs/anh/bep-phieu-mon.webp) |
 
 | Thủ kho: việc hôm nay | Quản lý: tổng quan |
 |---|---|
