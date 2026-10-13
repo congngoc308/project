@@ -35,6 +35,7 @@ export {
   CircleNotchIcon as Loader2Icon,
   ClipboardTextIcon as ClipboardCheck,
   ClockCounterClockwiseIcon as History,
+  CircleHalfIcon as CircleHalf,
   ClockIcon as Clock,
   DiceFiveIcon as Dices,
   DownloadSimpleIcon as Download,

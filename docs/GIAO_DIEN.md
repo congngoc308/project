@@ -105,18 +105,21 @@ Taste Skill yêu cầu dùng ảnh thật thay cho hình vẽ bằng div. Các �
 2. Accessible & Ethical + Minimalism (demo "Medical Clinic Portal" của UI UX Pro Max): nâng tương phản lên 7 : 1, cỡ chữ, ô bấm, focus. Các mốc này được giữ nguyên ở bản hiện tại.
 3. Taste Skill (bản hiện tại): đổi ngôn ngữ hình ảnh, giữ nguyên chức năng và mốc truy cập.
 
-## Giao diện riêng của phục vụ bàn ("ban đêm")
+## Giao diện riêng của phục vụ bàn (sáng / tối)
 
 Hai màn **Đặt món** và **Bàn & báo khách** dùng thiết kế "Phục Vụ" trên Claude Design. Giao diện này khác các vai trò còn lại:
-- **Màu:** nền tím than `#140E1F`, cam san hô `#FF5A3C`, vàng `#FFD84D`, kem `#FFF6EC`, hồng `#FF4F9A`.
+- **Hai bản màu, mặc định sáng.** Quầy và sảnh thường sáng, thu ngân cần đọc số tiền nhanh, và các vai trò khác cũng dùng nền sáng.
+  - **Sáng:** nền đá ấm `#F5F4F1`, thẻ trắng, chữ than `#1C1917`, màu nhấn paprika `#EB9360`, vàng `#FFD84D`, hồng `#F58BBD`; chữ màu dùng bản đậm (`#7C3410`, `#6B4300`, `#8A1240`).
+  - **Tối** (bản thiết kế gốc): nền tím than `#140E1F`, cam san hô `#FF5A3C`, vàng `#FFD84D`, kem `#FFF6EC`, hồng `#FF4F9A`. Hợp với ca tối ở quán ánh sáng mờ.
+  - Nút **Sáng / Tối / Tự động** trên đầu trang; Tự động = tối từ 18 giờ đến 6 giờ theo giờ hệ thống (có tính giờ demo). Lưu theo máy (`localStorage` khóa `serve-tone`).
 - **Font:** Bricolage Grotesque cho tiêu đề, Be Vietnam Pro cho chữ thường.
 
 | Phần | Cách làm |
 |---|---|
-| Bật / tắt | Lớp `night` gắn lên `<html>` khi đường dẫn là `/van-hanh/dat-mon` hoặc `/van-hanh/ban` (`layouts/NightBits.tsx`, `TabletLayout.tsx`). Rời khỏi hai màn này là về giao diện sáng. Hộp thoại và thông báo cũng đổi màu theo. |
-| Token | `html.night` trong `src/index.css` ghi đè bộ màu chung, thêm `--coral`, `--lime`, `--pink`, `--cream`, `--night*`. |
+| Bật / tắt | Lớp `night` gắn lên `<html>` khi đường dẫn là `/van-hanh/dat-mon` hoặc `/van-hanh/ban` (`layouts/NightBits.tsx`, `TabletLayout.tsx`). Bản sáng thêm lớp `day`. Rời khỏi hai màn này là về giao diện chung. Hộp thoại và thông báo cũng đổi màu theo. |
+| Token | `html.night:not(.day)` trong `src/index.css` ghi đè bộ màu chung cho bản tối; `html.night.day` giữ bộ màu chung. Cả hai đặt cùng một bộ biến riêng: `--n-bg`, `--n-surface`, `--n-text`, `--n-muted`, `--n-line`, `--n-invert`, `--coral*`, `--lime*`, `--pink*`... Màn phục vụ chỉ dùng các biến này, không viết mã màu cứng. |
 | Khung | Dải chữ chạy báo giờ demo; logo nghiêng; viên trạng thái ca; đồng hồ nhấp nháy dấu hai chấm; thẻ người dùng; tab dạng viên thuốc có nền trượt (≤ 3 tab). |
-| Đặt món | Bàn vẽ có 4 ghế, "Mang đi" có hình túi, bàn đang có đơn có chấm nhấp nháy. Ô món có ảnh và giá; món hết có con dấu xoay, chạm vào thì rung và báo lý do. Ảnh món bay vào giỏ. Giỏ là tờ hóa đơn kem với mã bàn lớn. **Mỗi bàn có giỏ nháp riêng.** Gửi bếp có pháo giấy. |
+| Đặt món | Bàn vẽ có 4 ghế, "Mang đi" có hình túi, bàn đang có đơn có chấm nhấp nháy. Ô món có ảnh và giá; món hết có con dấu xoay, chạm vào thì rung và báo lý do. Ảnh món bay vào giỏ. Giỏ là tờ hóa đơn (kem ở bản tối, trắng ở bản sáng) với mã bàn lớn. **Mỗi bàn có giỏ nháp riêng.** Gửi bếp có pháo giấy. |
 | Bàn & báo khách | Món hết nguyên liệu có ảnh, nút "Đổi món" / "Khách hủy". Mỗi bàn có thanh tiến độ (số món bếp đã xong) và chip trạng thái: Chờ bếp, Đang nấu, Bếp đã xong, Hết nguyên liệu, Đã hủy, Làm lại. |
 
 **Khác với bản thiết kế:**
@@ -126,7 +129,7 @@ Hai màn **Đặt món** và **Bàn & báo khách** dùng thiết kế "Phục V
 - **Chưa chọn bàn thì không tự chọn B1:** giỏ ghi "Chưa chọn", tránh gửi nhầm bàn.
 
 **Tương phản:**
-- Chữ nhỏ đạt 7 : 1.
+- Chữ nhỏ đạt 7 : 1 ở cả hai bản.
 - Chữ trên nền cam / hồng luôn là chữ lớn đậm, đạt mức AAA cho chữ lớn.
 - Axe-core trên hai màn: 0 vi phạm.
 - Hiệu ứng chuyển động tắt khi máy bật "giảm chuyển động".

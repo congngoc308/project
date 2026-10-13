@@ -30,7 +30,7 @@ Không thể hỏi bếp "còn bao nhiêu" rồi tin con số đó. Vì vậy h�
 
 | Vai trò | Thiết bị | Việc chính |
 |---|---|---|
-| **Phục vụ** | Máy tính bảng | Chọn bàn, chọn món gửi bếp. Có chuông và thông báo khi bếp nấu xong, bấm "Đã bưng" khi mang món ra bàn. Nhận báo khi món hết nguyên liệu để đổi món hoặc hủy. |
+| **Phục vụ** | Máy tính bảng | Chọn bàn, chọn món gửi bếp. Có chuông và thông báo khi bếp nấu xong, bấm "Đã bưng" khi mang món ra bàn. Nhận báo khi món hết nguyên liệu để đổi món hoặc hủy. Giao diện mặc định sáng, có nút Sáng / Tối / Tự động (tối từ 18 giờ đến 6 giờ), lưu theo máy. |
 | **Nhân viên bếp** | Máy tính bảng | Bảng 3 cột Chờ nấu / Đang nấu / Vừa ra món: bấm "Bắt đầu nấu" (kho trừ lúc này), "Xong, ra món". Ghi hao hụt, báo hết nguyên liệu hoặc hết món. |
 | **Bếp trưởng ca** | Máy tính bảng | Như nhân viên bếp, thêm: cân lại và ký nhận bàn giao, duyệt hao hụt, xác nhận bằng PIN khi hủy hoặc làm lại món đang nấu, mở bán lại món bị khóa. |
 | **Thủ kho** | Máy tính bảng | Màn "Việc hôm nay": nhập hàng, bàn giao đầu ca và bổ sung, cân trả cuối ca, kiểm kê. |
